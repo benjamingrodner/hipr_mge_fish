@@ -1,0 +1,680 @@
+# %% md
+
+# # Figure 3b: Segmentation filtering
+
+# Ran after running nb_3b_segmentation.py. Used the "esda" conda environment.
+
+# %% md
+# ==============================================================================
+# ## Setup
+# ==============================================================================
+
+# %% md
+
+# Imports
+
+# %% codecell
+import glob
+import sys
+import os
+import gc
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import yaml
+import re
+
+# %% md
+
+# Move to the workdir
+
+# %% codecell
+# Absolute path
+project_workdir = '/fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3d'
+
+os.chdir(project_workdir)
+os.getcwd()  # Make sure you're in the right directory
+
+
+# %% md
+
+# Load all the variables from the segmentation pipeline
+
+# %% codecell
+config_fn = 'config.yaml' # relative path to config file from workdir
+
+with open(config_fn, 'r') as f:
+    config = yaml.safe_load(f)
+
+# %% md
+
+# Specify an output directory for plots
+
+# %% codecell
+
+if not os.path.exists(config['figure_dir']): os.makedirs(config['figure_dir'])
+
+# %% md
+
+# Load specialized modules. Make sure you have the [segmentation pipeline](https://github.com/benjamingrodner/pipeline_segmentation).
+
+# %% codecell
+%load_ext autoreload
+%autoreload 2
+
+sys.path.append(config['pipeline_path'] + '/' + config['functions_path'])
+import fn_analysis_plots as apl
+
+# %% md
+
+# Get sample names
+
+# %% codecell
+sample_names = pd.read_csv(config['input_table_fn']).sample_name.values
+sample_names
+
+# %% md
+# ==============================================================================
+# ## Area thresholding on the segmentations
+# ==============================================================================
+
+# ### Remove off-target binding to debris in segmentations by area thresholding
+
+# Plot number of cells as a function of area threshold value and select threshold values for each channel. For the lower threshold, zoomed in to the left part of the x axis on the threshold curves. For the upper threshold tried to remove only the very largest objects, Checked visually on teh segmentation.
+
+# Not many visually apparent debris objects. The area thresholding was often removing real cells where multiple cells had been grouped into the same object. Could reduce the denoising value to solve this in the segmentation, but the current value does a nice job in most cases.
+
+# %% codecell
+# Get cell area threshold curves
+t_lims = (0,15000)
+n = 100
+fmt = 'cell_props_fmt'
+vals = 'area'
+seg_type = 'cell_seg'
+threshs = np.linspace(t_lims[0], t_lims[1], n)
+cell_area_curve_dict = apl.get_curve_dict(sample_names, config, seg_type=seg_type,
+                                        fmt=fmt, vals=vals,
+                                        threshs=threshs, lessthan=True)
+# %% codecell
+# Plot curves
+threshold_picks = [[150,12500]]
+
+xlims=(0,15000)
+dims=(4, 2)
+lw=1
+ft=6
+dpi=1000
+for sn in sample_names:
+    print(sn)
+    for ch, th_pck in zip(config[seg_type]['channels'], threshold_picks):
+        curves = [cell_area_curve_dict[sn][ch]]
+        fig, ax = apl.plot_threshold_curves(threshs, curves, xlims=xlims,
+                                            dims=dims, lw=lw, ft=ft)
+        # for c in curves:
+        #     slope = apl.get_curve_slope(threshs.tolist(), c)
+        #     ax.plot(threshs, slope/np.max(slope))
+        for t in th_pck:
+            ax.plot([t]*2, [0,1], 'k', lw=lw)
+        output_basename = (fig_dir + '/' + sn + '_chan_' + str(ch)
+                            + '_cell_area_threshold_curves')
+        apl.save_png_pdf(output_basename)
+        plt.show()
+
+# %% md
+
+# Add boolean area thresholding column to cell segmentation properties tables
+
+# %% codecell
+# Add to cell props
+# cell_props_area_fmt = re.sub('.csv', '_area_filter.csv', (config['output_dir']
+#                              + '/' + config[fmt]))
+cell_props_area_fmt = config['output_dir'] + '/' + config['cell_props_area_filt_fmt']
+for sn in sample_names:
+    for ch, th_pck in zip(config[seg_type]['channels'], threshold_picks):
+        props = apl.load_output_file(config, 'cell_props_fmt', sn, ch)
+        ut = (props.area < th_pck[1]).astype(int)
+        lt = (props.area > th_pck[0]).astype(int)
+        props['area_thresh'] = ut * lt
+        output_filename = cell_props_area_fmt.format(sample_name=sn,
+                                                       cell_chan=ch)
+        props.to_csv(output_filename, index=False)
+        print(output_filename)
+
+
+# %% md
+
+# Show thresholded images
+
+# %% codecell
+for sn in sample_names:
+    print(sn)
+    for ch in config['cell_seg']['channels']:
+        raw = apl.load_output_file(config, 'raw_fmt', sn, ch)[:,:,ch]
+        print(raw.shape)
+
+# %% codecell
+zc = (0, 7800, 0, 7800)
+clims = (0,0.025)
+cell_seg_area_filt_fmt = config['output_dir'] + '/' + config['cell_seg_area_filt_fmt']
+for sn in sample_names:
+    print(sn)
+    for ch, th_pck in zip(config['cell_seg']['channels'], threshold_picks):
+        raw = apl.load_output_file(config, 'raw_fmt', sn, ch)[:,:,ch]
+        seg = apl.load_output_file(config, 'cell_seg_fmt', sn, ch)
+        seg_new = seg.copy()
+        props = pd.read_csv(cell_props_area_fmt.format(sample_name=sn, cell_chan=ch))
+        remove_cids = props.loc[props.area_thresh == 0, ['label','bbox']].values
+        for i, (c, b) in enumerate(remove_cids):
+            b = eval(b)
+            b_sub = seg_new[b[0]:b[2],b[1]:b[3]]
+            b_sub = b_sub * (b_sub != c)
+            seg_new[b[0]:b[2],b[1]:b[3]] = b_sub
+        output_filename = cell_seg_area_filt_fmt.format(sample_name=sn,
+                                                        cell_chan=ch)
+        np.save(output_filename, seg_new)
+        apl.plot_image(raw, zoom_coords=zc, cmap='inferno', clims=clims)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg>0, zoom_coords=zc)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg_new>0, zoom_coords=zc)
+        plt.show()
+        plt.close()
+
+
+
+
+# %% md
+
+# ### Pick Area thresholds for spot channels
+
+# Threshold plots
+
+# %% codecell
+# Get spot area threshold curves
+t_lims = (0,1000)
+n = 100
+fmt = 'spot_props_fmt'
+vals = 'area'
+seg_type = 'spot_seg'
+threshs = np.linspace(t_lims[0], t_lims[1], n)
+spot_area_curve_dict = apl.get_curve_dict(sample_names, config, seg_type=seg_type,
+                                        fmt=fmt, vals=vals,
+                                        threshs=threshs, lessthan=True)
+
+# %% md
+
+# Picked only one threshold since the spots should be similar shape between channels. Picked the threshold to be as the curve starts to flatten. We want to remove very large objects that are debris, but keep the large objects that are groups of adjacent spots. As the curve starts to flatten, we are into the rare spot szes, such as the debris. Debris that coaligns ina ll channells should also be removed through the cell seg thresholding, which uses more gaussian blurring in teh segmentaiton and thus creates larger objects than the spot segmentation which are easier to remove by thresholding. When we assign spots to cells, the spots in the debris should not be assigned to cells and thus removed.
+
+# %% codecell
+# Plot curves
+xlims=(0,300)
+dims=(4,2)
+lw=1
+ft=6
+dpi=1000
+threshold_picks = [9,250]
+for sn in sample_names:
+    for ch in config[seg_type]['channels']:
+        print('Sample: ', sn, '\nChannel: ', ch)
+        curves = [spot_area_curve_dict[sn][ch]]
+        fig, ax = apl.plot_threshold_curves(threshs, curves, xlims=xlims,
+                                            dims=dims, lw=lw, ft=ft)
+        # for c in curves:
+        #     slope = apl.get_curve_slope(threshs.tolist(), c)
+        #     ax.plot(threshs, slope/np.max(slope))
+        for t in threshold_picks:
+            ax.plot([t]*2, [0,1], 'k', lw=lw)
+        output_basename = (fig_dir + '/' + sn + '_chan_' + str(ch)
+                            + '_spot_area_threshold_curves')
+        apl.save_png_pdf(output_basename)
+        plt.show()
+        plt.close()
+
+# %% md
+
+# Add boolean area thresholding column to spot segmentation properties tables
+
+# %% codecell
+# Add to spot props
+spot_props_area_fmt = config['output_dir'] + '/' + config['spot_props_area_filt_fmt']
+for sn in sample_names:
+    for ch in config[seg_type]['channels']:
+        props = apl.load_output_file(config, 'spot_props_fmt', sn, spot_chan=ch)
+        ut = (props.area < threshold_picks[1]).astype(int)
+        lt = (props.area > threshold_picks[0]).astype(int)
+        props['area_thresh'] = ut * lt
+        output_filename = spot_props_area_fmt.format(sample_name=sn,
+                                                       spot_chan=ch)
+        props.to_csv(output_filename, index=False)
+
+
+# %% md
+
+# Show thresholded images
+
+# %% codecell
+clims = (0,0.005)
+zc = (4000, 5000, 4000, 5000)
+spot_seg_area_filt_fmt = config['output_dir'] + '/' + config['spot_seg_area_filt_fmt']
+for sn in sample_names:
+    raw = apl.load_output_file(config, 'raw_fmt', sn)
+    for ch in config['spot_seg']['channels']:
+        print('Sample: ', sn, '\nChannel: ', ch)
+        raw_ch = raw[:,:,ch]
+        seg = apl.load_output_file(config, 'spot_seg_fmt', sn, spot_chan=ch)
+        seg_new = seg.copy()
+        props = pd.read_csv(spot_props_area_fmt.format(sample_name=sn, spot_chan=ch))
+        remove_cids = props.loc[props.area_thresh == 0, ['label','bbox']].values
+        for i, (c, b) in enumerate(remove_cids):
+            if i == 0:  print('yep')
+            b = eval(b)
+            b_sub = seg_new[b[0]:b[2],b[1]:b[3]]
+            b_sub = b_sub * (b_sub != c)
+            seg_new[b[0]:b[2],b[1]:b[3]] = b_sub
+        output_filename = spot_seg_area_filt_fmt.format(sample_name=sn, spot_chan=ch)
+        np.save(output_filename, seg_new)
+        apl.plot_image(raw_ch, zoom_coords=zc, cmap='inferno', im_inches=10, clims=clims)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg>0, zoom_coords=zc, im_inches=10)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg_new>0, zoom_coords=zc, im_inches=10)
+        plt.show()
+        plt.close()
+        fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='inferno', im_inches=10, clims=clims)
+        apl.plot_seg_outline(ax, seg[zc[0]:zc[1],zc[2]:zc[3]])
+        plt.show()
+        plt.close()
+        fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='inferno', im_inches=10, clims=clims)
+        apl.plot_seg_outline(ax, seg_new[zc[0]:zc[1],zc[2]:zc[3]])
+        plt.show()
+        plt.close()
+
+
+# %% md
+# ==============================================================================
+# ## Split multimax spots
+# ==============================================================================
+
+# There are many segmented spots that have multiple maxima. We want to split those into separate segmentations.
+
+# Run a snakemake for this
+
+# %% codecell
+dry_run = False  # Just create DAG if True
+n_cores = 6  # number of allowed cores for the snakemake to use
+force_run = 'split_multimax_spots'  # Pick a rule to re-run. False if you don't want a force run.
+
+snakefile = config['snakefile_multimax']
+dr = '-pn' if dry_run else '-p'
+fr = '-R ' + force_run if force_run else ''
+command = " ".join(['snakemake', '-s', snakefile, '--configfile', config_fn, '-j',
+                    str(n_cores), dr, fr])
+
+with open(config['run_multimax_fn'], 'w') as f:
+    f.write(command)
+
+command
+
+# %% md
+
+# Now execute the script in the command line.
+
+# ```console
+# $ conda activate hiprfish_imaging_py38
+# $ cd /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3d
+# $ sh run_multimax.sh
+# ```
+
+# %% md
+
+# check multimax split
+
+# %% codecell
+sn = sample_names[1]
+sn
+s_ch = config['spot_seg']['channels'][0]
+raw = apl.load_output_file(config, 'raw_fmt', sn)
+raw_ch = raw[:,:,s_ch]
+pre = apl.load_output_file(config, 'spot_seg_area_filt_fmt', sn, spot_chan=s_ch)
+print('pre', np.unique(pre).shape[0])
+post = apl.load_output_file(config, 'spot_seg_max_split_fmt', sn, spot_chan=s_ch)
+print('post',np.unique(post).shape[0])
+# %% codecell
+zc = (3750,4000,3500,3750)
+apl.plot_image(apl.seg2rgb(pre[zc[0]:zc[1],zc[2]:zc[3]]))
+fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='inferno')
+apl.plot_seg_outline(ax, pre[zc[0]:zc[1],zc[2]:zc[3]], col=(0.5,0.5,0.5))
+apl.plot_image(apl.seg2rgb(post[zc[0]:zc[1],zc[2]:zc[3]]))
+fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='inferno')
+apl.plot_seg_outline(ax, post[zc[0]:zc[1],zc[2]:zc[3]], col=(0.5,0.5,0.5))
+
+
+
+
+# %% md
+# ==============================================================================
+# ## SNR thresholding on the segmentations
+# ==============================================================================
+
+# There are many segmented spots that are only part of the background noise.
+
+# ### Calculate the SNR for spots
+
+# %% codecell
+# Get background values and calculate SNR
+c_ch = config['cell_seg']['channels'][0]
+spot_props_snr_filt_fmt = config['output_dir'] + '/' + config['spot_props_snr_fmt']
+bg_dict = {}
+for sn in sample_names:
+    raw = apl.load_output_file(config, 'raw_fmt', sn)
+    bg_dict[sn] = {}
+    for ch in config['spot_seg']['channels']:
+        # Background
+        raw_ch = raw[:,:,ch]
+        seg = apl.load_output_file(config, 'spot_seg_fmt', sn, spot_chan=ch)
+        bg = raw_ch[seg == 0]
+        bg_mean = np.mean(bg)
+        bg_std = np.std(bg)
+        bg_dict[sn][ch] = [bg_mean, bg_std]
+        # SNR
+        props = apl.load_output_file(config, 'spot_props_max_split_fmt', sn, spot_chan=ch,
+                                     cell_chan=c_ch)
+        props['snr'] = props.max_intensity / bg_mean
+        output_filename = spot_props_snr_filt_fmt.format(sample_name=sn, spot_chan=ch)
+        props.to_csv(output_filename, index=False)
+
+
+# %% codecell
+# PLot background values
+dims=(2,2)
+ticks=[]
+tab10 = apl.get_cmap_listed('tab10')
+cols = tab10[:6]
+fig, ax = apl.general_plot(dims=dims)
+for k, (sn, c) in enumerate(zip(sample_names, cols)):
+    print(sn)
+    shift = k
+    ticks.append(shift+0.2)
+    for l, ch in enumerate(config['spot_seg']['channels']):
+        bgm = bg_dict[sn][ch][0]
+        bgs = bg_dict[sn][ch][1]
+        shift2 = shift + l*0.2
+        ax.errorbar(shift2, bgm, yerr=bgs, marker='.', color=c)
+
+ax.set_xticks(ticks)
+ax.set_xticklabels([])
+
+# %% md
+
+# ### Remove background spots by SNR thresholding
+
+# Plot number of objects as a function of SNR threshold value and select a threshold for each channel.
+
+# %% codecell
+for sn in sample_names:
+    for ch in config['spot_seg']['channels']:
+        props = apl.load_output_file(config, 'spot_props_snr_fmt', sn, spot_chan=ch,
+                                     cell_chan=c_ch)
+        print(props.snr.min(), props.snr.mean(), props.snr.max())
+
+# %% codecell
+t_lims = (0,200)
+n = 1000
+vals = 'snr'
+seg_type = 'spot_seg'
+threshs = np.linspace(t_lims[0], t_lims[1], n)
+spot_snr_curve_dict = {}
+for sn in sample_names:
+    spot_snr_curve_dict[sn] = {}
+    for ch in config['spot_seg']['channels']:
+        props = apl.load_output_file(config, 'spot_props_snr_fmt', sn, spot_chan=ch,
+                                     cell_chan=c_ch)
+        # props = props[props.cell_id > 0]
+        n = props.shape[0]
+        spot_snr_curve_dict[sn][ch] = [props[props[vals] > t].shape[0] / n
+                                        for t in threshs]
+
+# %% md
+
+# Picked a threshold after the initial steep negative slope, where the number of spots becomes less sensitive to the threshold.
+
+# %% codecell
+# Plot curves
+xlims=(0,10)
+dims=(6,3)
+lw=1
+ft=6
+dpi=1000
+threshold_picks = [10]
+for ch, thr_pk in zip(config['spot_seg']['channels'], threshold_picks):
+    for sn in sample_names:
+        print('Sample: ', sn, '\nChannel: ', ch)
+        curves = [spot_snr_curve_dict[sn][ch]]
+        fig, ax = apl.plot_threshold_curves(threshs, curves, xlims=xlims,
+                                            dims=dims, lw=lw, ft=ft)
+        # for c in curves:
+        #     slope = apl.get_curve_slope(threshs.tolist(), c)
+        #     ax.plot(threshs, slope/np.max(slope))
+        ax.plot([thr_pk]*2, [0,1], 'k', lw=lw)
+        ax.plot(t_lims, [0,0],'k',lw=lw*0.5)
+        output_basename = (fig_dir + '/' + sn + '_chan_' + str(ch)
+                            + '_spot_snr_threshold_curves')
+        apl.save_png_pdf(output_basename)
+        plt.show()
+        plt.close()
+
+
+# %% md
+
+# Add boolean area thresholding column to spot segmentation properties tables
+
+# %% codecell
+# Add to spot props
+spot_props_snr_filt_fmt = config['output_dir'] + '/' + config['spot_props_snr_filt_fmt']
+for sn in sample_names:
+    for ch, thr_pk in zip(config['spot_seg']['channels'], threshold_picks):
+        props = apl.load_output_file(config, 'spot_props_snr_fmt', sn, spot_chan=ch,
+                                     cell_chan=c_ch)
+        props['snr_thresh'] = (props.snr > thr_pk).astype(int)
+        output_filename = spot_props_snr_filt_fmt.format(sample_name=sn,
+                                                         spot_chan=ch)
+        props.to_csv(output_filename, index=False)
+        print(output_filename)
+        print(props.snr_thresh.sum())
+
+# %% md
+
+# Show thresholded images
+
+# %% codecell
+# save new segmentaiton
+spot_seg_snr_filt_fmt = config['output_dir'] + '/' + config['spot_seg_snr_filt_fmt']
+for sn in sample_names:
+    raw = apl.load_output_file(config, 'raw_fmt', sn)
+    for ch in config['spot_seg']['channels']:
+        raw_ch = raw[:,:,ch]
+        seg_fn = spot_seg_area_filt_fmt.format(sample_name=sn, spot_chan=ch)
+        seg = apl.load_output_file(config,'spot_seg_max_split_fmt', sn,
+                                    cell_chan=c_ch, spot_chan=ch)
+        props = apl.load_output_file(config,'spot_props_snr_filt_fmt', sn, spot_chan=ch)
+        seg_new = apl.filter_seg_objects(seg, props, 'snr_thresh')
+        output_filename = spot_seg_snr_filt_fmt.format(sample_name=sn,
+                                                            spot_chan=ch)
+        np.save(output_filename, seg_new)
+        print(output_filename)
+
+
+# %% codecell
+# Show the filtering
+zc = (0, 9000, 0, 9000)
+clims=(0, 0.005)
+for sn in sample_names:
+    raw = apl.load_output_file(config, 'raw_fmt', sn)
+    for ch in config['spot_seg']['channels']:
+        print('Sample: ', sn, '\nChannel: ', ch)
+        raw_ch = raw[:,:,ch]
+        seg = apl.load_output_file(config,'spot_seg_max_split_fmt', sn,
+                                    cell_chan=c_ch, spot_chan=ch)
+        seg_new = apl.load_output_file(config,'spot_seg_snr_filt_fmt', sn,
+                                    cell_chan=c_ch, spot_chan=ch)
+        props = apl.load_output_file(config,'spot_props_snr_filt_fmt', sn, spot_chan=ch)
+        # Check that the filtering agrees
+        print('Pre: ', props.shape[0])
+        print('Post (table): ', props[props.snr_thresh==1].shape[0])
+        print('Post (seg): ', np.unique(seg_new).shape[0])
+        apl.plot_image(raw_ch, zoom_coords=zc, cmap='inferno', im_inches=10, clims=clims)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg>0, zoom_coords=zc, im_inches=10)
+        plt.show()
+        plt.close()
+        apl.plot_image(seg_new>0, zoom_coords=zc, im_inches=10)
+        plt.show()
+        plt.close()
+        fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='gray', im_inches=10, clims=clims)
+        apl.plot_seg_outline(ax, seg[zc[0]:zc[1],zc[2]:zc[3]], col=(1,0,1))
+        plt.show()
+        plt.close()
+        fig, ax, cbar = apl.plot_image(raw_ch[zc[0]:zc[1],zc[2]:zc[3]], cmap='inferno', im_inches=10, clims=clims)
+        apl.plot_seg_outline(ax, seg_new[zc[0]:zc[1],zc[2]:zc[3]], col=(1,0,1))
+        plt.show()
+        plt.close()
+
+# %% md
+# ==============================================================================
+# ## Assing spots to cells
+# ==============================================================================
+
+# Given a spot segmentation and a cell segmentation, determine wich spots associate with which cells.
+
+# Run a snakemake for this
+
+# %% codecell
+dry_run = False  # Just create a plan for the run if True
+n_cores = 6  # number of allowed cores for the snakemake to use
+force_run = 'False'  # Pick a rule to re-run. False if you don't want a force run.
+
+snakefile = config['snakefile_spottocell']
+dr = '-pn' if dry_run else '-p'
+fr = '-R ' + force_run if force_run else ''
+command = " ".join(['snakemake', '-s', snakefile, '--configfile', config_fn, '-j',
+                    str(n_cores), dr, fr])
+
+with open(config['run_spottocell_fn'], 'w') as f:
+    f.write(command)
+
+command
+
+# %% md
+
+# Now execute the script in the command line.
+
+# ```console
+# $ conda activate hiprfish_imaging_py38
+# $ cd /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3b
+# $ sh run_spottocell.sh
+# ```
+
+# Check spot to cell assignment
+
+# %% codecell
+c_ch = config['cell_seg']['channels'][0]
+zc = (0,9000, 0,9000)
+ms=5
+cell_seg = apl.load_output_file(config, 'cell_seg_area_filt_fmt', sn, cell_chan=c_ch)
+spot_props_snr = apl.load_output_file(config, 'spot_props_snr_filt_fmt', sn,
+                                    cell_chan=c_ch, spot_chan=s_ch)
+ss = spot_props_snr[spot_props_snr.snr_thresh==1].centroid.apply(lambda x: eval(x))
+ss = np.array([[i for i in k] for k in ss])
+ss
+# ss = np.array([[i - j for i, j in zip(k, [zc[0],zc[2]])] for k in ss])
+spot_props_cid = apl.load_output_file(config, 'spot_props_cid_fmt', sn,
+                                    cell_chan=c_ch, spot_chan=s_ch)
+sc = spot_props_snr[spot_props_cid.cell_id > 0].centroid.apply(lambda x: eval(x))
+sc = np.array([[i for i in k] for k in sc])
+sc
+print('Pre')
+fig, ax, cbar = apl.plot_image(cell_seg > 0, cmap='gray', zoom_coords=zc)
+ax.plot(ss[:,1], ss[:,0], '.', ms=ms, color=(1,0,1))
+plt.show()
+print('Post')
+fig, ax, cbar = apl.plot_image(cell_seg > 0, cmap='gray', zoom_coords=zc)
+ax.plot(sc[:,1], sc[:,0], '.', ms=ms, color=(1,0,1))
+plt.show()
+# apl.plot_seg_outline(ax, spot_seg_cid[zc[0]:zc[1],zc[2]:zc[3]], col=(0,1,1))
+
+
+# %% md
+# ==============================================================================
+# ## Final checks
+# ==============================================================================
+
+# Get a table of values after all the thresholding. Make sure the segmentation matches the properties table
+
+# %% codecell
+counts_seg = pd.DataFrame([])
+for sn in sample_names:
+    counts = []
+    index = []
+    for c_ch in config['cell_seg']['channels']:
+        cell_seg = apl.load_output_file(config, 'cell_seg_fmt', sn, cell_chan=c_ch)
+        cp_c = np.unique(cell_seg).shape[0]
+        cell_seg_area_filt = apl.load_output_file(config, 'cell_seg_area_filt_fmt', sn, cell_chan=c_ch)
+        cpa_c = np.unique(cell_seg_area_filt).shape[0]
+        counts += [cp_c, cpa_c]
+        index += ['cell_seg','cell_area_filt']
+        for s_ch in config['spot_seg']['channels']:
+            spot_seg = apl.load_output_file(config, 'spot_seg_fmt', sn, spot_chan=s_ch)
+            sp_c = np.unique(spot_seg).shape[0]
+            spot_seg_area_filt = apl.load_output_file(config, 'spot_seg_area_filt_fmt', sn, spot_chan=s_ch)
+            spa_c = np.unique(spot_seg_area_filt).shape[0]
+            spot_seg_max_split = apl.load_output_file(config, 'spot_seg_max_split_fmt', sn, spot_chan=s_ch)
+            spm_c = np.unique(spot_seg_max_split).shape[0]
+            spot_seg_snr_filt = apl.load_output_file(config, 'spot_seg_snr_filt_fmt', sn, spot_chan=s_ch, cell_chan=c_ch)
+            spc_c = np.unique(spot_seg_snr_filt).shape[0]
+            spot_seg_cid_filt = apl.load_output_file(config, 'spot_seg_cid_filt_fmt', sn, spot_chan=s_ch, cell_chan=c_ch)
+            spas_c = np.unique(spot_seg_cid_filt).shape[0]
+            counts += [sp_c, spa_c, spm_c, spc_c, spas_c]
+            _ind = ['spot_seg','spot_area_filt','spot_max_split','spot_snr_filt', 'spot_cid_filt']
+            index += [i + '_ch_' + str(s_ch) for i in _ind]
+    counts_seg[sn] = counts
+    counts_seg.index = index
+
+counts_seg.to_csv(config['output_dir'] + '/counts_seg.csv')
+counts_seg
+
+# %% codecell
+counts_table = pd.DataFrame([])
+for sn in sample_names:
+    counts = []
+    index = []
+    for c_ch in config['cell_seg']['channels']:
+        cell_props = apl.load_output_file(config, 'cell_props_fmt', sn, cell_chan=c_ch)
+        cp_c = cell_props.shape[0]
+        cell_props_area_filt = apl.load_output_file(config, 'cell_props_area_filt_fmt', sn, cell_chan=c_ch)
+        cpa_c = cell_props_area_filt[cell_props_area_filt.area_thresh == 1].shape[0]
+        counts += [cp_c, cpa_c]
+        index += ['cell_seg','cell_area_filt']
+        for s_ch in config['spot_seg']['channels']:
+            spot_props = apl.load_output_file(config, 'spot_props_fmt', sn, spot_chan=s_ch)
+            sp_c = spot_props.shape[0]
+            spot_props_area_filt = apl.load_output_file(config, 'spot_props_area_filt_fmt', sn, spot_chan=s_ch)
+            spa_c = spot_props_area_filt[spot_props_area_filt.area_thresh == 1].shape[0]
+            spot_props_max_split = apl.load_output_file(config, 'spot_props_max_split_fmt', sn, spot_chan=s_ch)
+            spm_c = spot_props_max_split.shape[0]
+            spot_props_snr_filt = apl.load_output_file(config, 'spot_props_snr_filt_fmt', sn, spot_chan=s_ch, cell_chan=c_ch)
+            spc_c = spot_props_snr_filt[spot_props_snr_filt.snr_thresh == 1].shape[0]
+            spot_props_cid = apl.load_output_file(config, 'spot_props_cid_fmt', sn, spot_chan=s_ch, cell_chan=c_ch)
+            spas_c = spot_props_cid[spot_props_cid.cell_id > 0].shape[0]
+            counts += [sp_c, spa_c, spm_c, spc_c, spas_c]
+            _ind = ['spot_seg','spot_area_filt','spot_max_split','spot_snr_filt', 'spot_cid_filt']
+            index += [i + '_ch_' + str(s_ch) for i in _ind]
+    counts_table[sn] = counts
+    counts_table.index = index
+
+counts_table.to_csv(config['output_dir'] + '/counts_table.csv')
+counts_table

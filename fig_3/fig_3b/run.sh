@@ -1,1 +1,1 @@
-snakemake -s Snakefile --configfile config.yaml -j 2 -p -R segment_cells
+snakemake -s Snakefile_analysis --configfile config.yaml -j 2 -pn 

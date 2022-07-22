@@ -1,6 +1,6 @@
 # %% md
 
-# # Figure 3b: Image Segmentation
+# # Figure 3d: Image Segmentation
 
 # Used "hiprfish_imaging_py38" conda environment
 
@@ -33,7 +33,7 @@ gc.enable()  # Garbage cleanup
 
 # %% codecell
 # Absolute path
-project_workdir = '/fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3b'
+project_workdir = '/fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3c'
 
 os.chdir(project_workdir)
 os.getcwd()  # Make sure you're in the right directory
@@ -99,7 +99,7 @@ n_channels = input.shape[2]
 n_channels
 
 # %% codecell
-clims = [(0,0.05),(0,0.05),(0,0.05),(0,0.25)] # One color threshold tuple per channel
+clims = [(0,0.05),(0,0.025),(0,0.005)] # One color threshold tuple per channel
 im_list = [input[:,:,i] for i in range(n_channels)]
 ip.subplot_square_images(im_list, (1,n_channels), clims=clims)
 
@@ -135,6 +135,7 @@ im_cell_mask_old, im_cell_pre_old, im_cell_seg_old = [sf.np.zeros((2,2))]*3
 im_cell_seg_old[0,0] = 1
 
 # %% codecell
+clims=(0,0.025)
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['cell_seg']
@@ -149,10 +150,10 @@ im_cell_mask = sf.get_background_mask(
     bg_threshold=pdict['bg_threshold']
     )
 print('old')
-ip.subplot_square_images([im_cell, im_cell_mask_old], (1,2))
+ip.subplot_square_images([im_cell, im_cell_mask_old], (1,2), clims=[clims,[]],)
 ip.plt.show()
 print('new')
-ip.subplot_square_images([im_cell, im_cell_mask], (1,2))
+ip.subplot_square_images([im_cell, im_cell_mask], (1,2), clims=[clims,[]])
 im_cell_mask_old = im_cell_mask
 
 # %% codecell
@@ -206,9 +207,7 @@ ip.plot_seg_outline(ax, im_cell_seg, col=(0,0,0))
 
 # %% md
 
-# ### Test spot seg parameters 
-
-# adjust in the configuration file, and repeat until it's good. Check all the spot seg channels.
+# Test spot seg parameters, adjust in the configuration file, and repeat until it's good. Check all the spot seg channels.
 
 # %% codecell
 sp=0
@@ -220,6 +219,8 @@ im_spot_mask_old, im_spot_pre_old, im_spot_seg_old = [sf.np.zeros((2,2))]*3
 im_spot_seg_old[0,0] = 1
 
 # %% codecell
+clims=(0,0.0025)
+
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['spot_seg']
@@ -234,10 +235,10 @@ im_spot_mask = sf.get_background_mask(
     bg_threshold=pdict['bg_threshold']
     )
 print('old')
-ip.subplot_square_images([im_spot, im_spot_mask_old], (1,2))
+ip.subplot_square_images([im_spot, im_spot_mask_old], (1,2), clims=[clims,[]])
 ip.plt.show()
 print('new')
-ip.subplot_square_images([im_spot, im_spot_mask], (1,2))
+ip.subplot_square_images([im_spot, im_spot_mask], (1,2), clims=[clims,[]])
 im_spot_mask_old = im_spot_mask
 
 # %% codecell
@@ -267,13 +268,13 @@ print('old')
 im_list = [im_spot_mask_old[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
            im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_spot_pre_old,
            ip.seg2rgb(im_spot_seg_old)]
-ip.subplot_square_images(im_list, (1,4))
+ip.subplot_square_images(im_list, (1,4), clims=[[],clims,clims,[]])
 ip.plt.show()
 print('new')
 im_list = [ im_spot_mask[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
             im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_spot_pre,
             ip.seg2rgb(im_spot_seg)]
-ip.subplot_square_images(im_list, (1,4))
+ip.subplot_square_images(im_list, (1,4), clims=[[],clims,clims,[]])
 im_spot_pre_old = im_spot_pre
 im_spot_seg_old = im_spot_seg
 # seg_clims = max([clims[i] for i in config['cell_seg']['channels']])
@@ -286,7 +287,7 @@ im_spot_seg_old = im_spot_seg
 # Below the segmentation projected onto the raw image
 
 # %% codecell
-fig, ax, cbar = ip.plot_image(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno')
+fig, ax, cbar = ip.plot_image(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno', clims=clims)
 ip.plot_seg_outline(ax, im_spot_seg, col=(0,0,0))
 
 # %% md
@@ -306,7 +307,7 @@ ma = spf._get_merged_peaks(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
 # merged_peaks = spf.center_of_mass(is_peak, labels, range(1, np.max(labels)+1))
 # ma = np.array(merged_peaks)
 fig, ax, cbar = ip.plot_image(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
-                              cmap='inferno', im_inches=20)
+                              cmap='inferno', im_inches=20, clims=clims)
 ax.scatter(ma[:,1],ma[:,0], s=50, color=(0,1,0))
 ax = ip.plot_seg_outline(ax, im_spot_seg, col=(0,0.8,0.8))
 # ax.set_xlim((300,400))
@@ -344,15 +345,15 @@ input_table.values
 # %% codecell
 dry_run = False  # Just create DAG if True
 n_cores = 2  # number of allowed cores for the snakemake to use
-force_run = 'segment_cells'  # Pick a rule to re-run. False if you don't want a force run.
+force_run = False  # Pick a rule to re-run. False if you don't want a force run.
 
-snakefile = config['snakefile']
+snakefile = config['snakefile_segment']
 dr = '-pn' if dry_run else '-p'
 fr = '-R ' + force_run if force_run else ''
 command = " ".join(['snakemake', '-s', snakefile, '--configfile', config_fn, '-j',
                     str(n_cores), dr, fr])
 
-with open(config['run_fn'], 'w') as f:
+with open(config['run_segment_fn'], 'w') as f:
     f.write(command)
 
 command
@@ -363,8 +364,8 @@ command
 
 # ```console
 # $ conda activate hiprfish_imaging_py38
-# $ cd /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3b
-# $ sh run.sh
+# $ cd /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3d
+# $ sh run_segment.sh
 # ```
 
 # Check the segmentation

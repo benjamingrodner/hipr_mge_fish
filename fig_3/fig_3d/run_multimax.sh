@@ -1,0 +1,1 @@
+snakemake -s Snakefile_multimax --configfile config.yaml -j 6 -p -R split_multimax_spots
