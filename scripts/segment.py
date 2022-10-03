@@ -24,6 +24,7 @@ def main():
     parser.add_argument('-st', '--seg_type', dest ='seg_type', type = str, help = '')
     # parser.add_argument('-pp', '--pipeline_path', dest ='pipeline_path', type = str, help = '')
     parser.add_argument('-pfn', '--process_fn', dest ='process_fn', type = str, help = '')
+    parser.add_argument('-sn', '--sample_name', dest ='sample_name', type = str, default='all', help = '')
     parser.add_argument('-ch', '--channel', dest ='channel', type = str, default='all', help = '')
     args = parser.parse_args()
 
@@ -40,6 +41,11 @@ def main():
     import segmentation_func as sf
     channels = pdict['channels'] if args.channel == 'all' else [int(args.channel)]
     im = sf.max_projection(im_full, channels)
+    if pdict['bg_file']:
+        bg_file_fmt = config['output_dir'] + '/' + config[pdict['bg_file']]
+        bg_file = bg_file_fmt.format(sample_name=args.sample_name, spot_chan=args.channel)
+    else:
+        bg_file = False
     # for ch in pdict['channels']:
         # im = im_full[:,:,ch]
     # run segmentation
@@ -57,7 +63,8 @@ def main():
         bg_smoothing=pdict['bg_smoothing'],
         n_clust_bg=pdict['n_clust_bg'],
         top_n_clust_bg=pdict['top_n_clust_bg'],
-        bg_threshold=pdict['bg_threshold']
+        bg_threshold=pdict['bg_threshold'],
+        bg_file=bg_file
         )
     im_seg = sf.segment(
         im_pre,

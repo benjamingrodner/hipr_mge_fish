@@ -17,7 +17,8 @@ figure_dir: ../../../outputs/fig_3/fig_3b/figures
 pipeline_path: ../..
                 # relative path to the segmentation  pipeline folder from workdir
 functions_path: functions  # Path to function scripts relative to the pipeline path
-snakefile: Snakefile  # relative path to the snakefile
+snakefile_convert: Snakefile_convert  # relative path to the snakefile
+snakefile_segment: Snakefile_segment  # relative path to the snakefile
 snakefile_multimax: Snakefile_multimax
 snakefile_spottocell: Snakefile_spottocell
 
@@ -28,9 +29,9 @@ input_regex: '*'
 input_table_cols: [sample_name]  # Add to if you want different params for
                                   # different images, one colum must be "sample_name"
 conda_env: hiprfish_imaging_py38
-run_fn: run.sh  # Bash script to execute and document your run command
-run_multimax_fn: run_multimax.sh  # Bash script to execute and document your run command
-run_spottocell_fn: run_spottocell.sh  # Bash script to execute and document your run command
+# run_fn: run.sh  # Bash script to execute and document your run command
+# run_multimax_fn: run_multimax.sh  # Bash script to execute and document your run command
+# run_spottocell_fn: run_spottocell.sh  # Bash script to execute and document your run command
 # conda_env_fn: ../envs/hiprfish_imaging_py38.yaml  # environment filename relative
 #                                                 # to the rules folder in the pipeline
 
@@ -49,6 +50,9 @@ cell_seg:
   top_n_clust_bg: 4  # how many clusters to use as foreground in auto background subtraction
   bg_threshold: 0  # Manual value of background subtraction threshold
                   # overrides auto background subtraction
+  bg_file: 0
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
   n_clust: 2  # Number of clusters to use in LNE foreground selection (only selects the highest intensity one)
   small_objects: 50  # Remove segmented objects with pixel area smaller than this value
   maxima: False  # Locate maxima in segmentaiton and get intensities there
@@ -68,9 +72,12 @@ spot_seg:
   top_n_clust_bg: 4  # how many clusters to use as foreground in auto background subtraction
   bg_threshold: 0  # Manual value of background subtraction threshold
                   # overrides auto background subtraction
+  bg_file: spot_mask_bg_debris_fmt
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
   n_clust: 2  # Number of clusters to use in LNE foreground selection
   small_objects: 9  # Remove segmented objects with pixel area smaller than this value
-  maxima: True  # Locate maxima in segmentaiton and get intensities there
+  maxima: False  # Locate maxima in segmentaiton and get intensities there
 
 seg_process_dpi: 10000
 seg_process_ext: _process.pdf
@@ -78,8 +85,14 @@ local_max_mindist: 3
 max_dist_to_cell: 5
 
 ## Filename formatting
-# Pipeline segmentaiton
 raw_fmt: raw_npy/{sample_name}.npy
+# background_mask
+spot_mask_bg_rough_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg_rough.npy
+spot_mask_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg.npy
+spot_props_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_props_bg.csv
+spot_mask_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{channel}_spot_mask_bg_debris.npy
+spot_props_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{channel}_spot_props_bg_debris.csv
+# Pipeline segmentaiton
 cell_seg_fmt: cell_seg/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg.npy
 spot_seg_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg.npy
 cell_props_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_props.csv
@@ -87,8 +100,8 @@ spot_props_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot
 # Area filtering
 cell_props_area_filt_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_props_area_filter.csv
 cell_seg_area_filt_fmt: cell_seg/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_area_filt.npy
-spot_props_area_filt_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_area_filt.csv
-spot_seg_area_filt_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_area_filt.npy
+# spot_props_area_filt_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_area_filt.csv
+# spot_seg_area_filt_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_area_filt.npy
 # Multimax splitting
 spot_props_locmax_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_locmax.npy
 spot_props_locmax_props_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_locmax_props.csv

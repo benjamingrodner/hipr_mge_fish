@@ -201,6 +201,9 @@ def _get_rough_segmentation(im_lne, n_clust=2):
     intensity_rough_seg = remove_small_objects(intensity_rough_seg, 1)
     return binary_fill_holes(intensity_rough_seg)
 
+def _normalize_zero_one(image):
+    return (image - np.min(image))/(np.max(image) - np.min(image))
+
 # =============================================================================
 # Wrapper functions
 # =============================================================================
@@ -222,7 +225,7 @@ def max_projection(raw, channels):
 def pre_process(image, denoise=False, gauss=0, log=False, diff_gauss=(0,)):
     if log:
         image = np.log10(image + 1e-15)
-        image = (image - np.min(image))/(np.max(image) - np.min(image))
+        image = _normalize_zero_one(image)
     if denoise:
         patch_kw = dict(patch_size=5,      # 5x5 patches
                         patch_distance=6)  # 13x13 search area
@@ -234,35 +237,40 @@ def pre_process(image, denoise=False, gauss=0, log=False, diff_gauss=(0,)):
         image = ndi.gaussian_filter(image, sigma=gauss, order=0)
     if len(diff_gauss)==2:
         image = difference_of_gaussians(image, diff_gauss[0],diff_gauss[1])
+        image = _normalize_zero_one(image)
     return image
 
 
-def get_background_mask(image, bg_log=False, bg_smoothing=0, bg_filter=True,
-                        n_clust_bg=2, top_n_clust_bg=1, bg_threshold=0):
-    if bg_log:
-        image = np.log10(image + 1e-15)
-        image = (image - np.min(image))/(np.max(image) - np.min(image))
-    if bg_smoothing:
-        image = ndi.gaussian_filter(image, sigma=bg_smoothing, order=0)
+def get_background_mask(image, bg_filter=True, bg_file=False, bg_log=False,
+                        bg_smoothing=0, n_clust_bg=2, top_n_clust_bg=1,
+                        bg_threshold=0):
     if bg_filter:
-        if bg_threshold:
-            return 1*(image>bg_threshold)
+        if bg_file:
+            return 1*(np.load(bg_file) > 0)
         else:
-            cluster = MiniBatchKMeans(n_clusters=n_clust_bg,
-                                               batch_size=100000, random_state=42)
-            shape_ = image.reshape(np.prod(image.shape), 1)
-            image_bkg_filter = cluster.fit_predict(shape_)
-            image_bkg_filter = image_bkg_filter.reshape(image.shape)
-            i_list = []
-            for n in range(n_clust_bg):
-                image_ = image*(image_bkg_filter == n)
-                i_n = np.average(image_[image_ > 0])
-                i_list.append(i_n)
-            i_list = np.argsort(i_list)[::-1]
-            _image_bkg_filter_mask = np.zeros(image_bkg_filter.shape, dtype=bool)
-            for tn in range(top_n_clust_bg):
-                _image_bkg_filter_mask += image_bkg_filter == i_list[tn]
-            return _image_bkg_filter_mask
+            if bg_threshold:
+                return 1*(image>bg_threshold)
+            else:
+                if bg_log:
+                    image = np.log10(image + 1)
+                    image = _normalize_zero_one(image)
+                if bg_smoothing:
+                    image = ndi.gaussian_filter(image, sigma=bg_smoothing, order=0)
+                cluster = MiniBatchKMeans(n_clusters=n_clust_bg,
+                                                   batch_size=100000, random_state=42)
+                shape_ = image.reshape(np.prod(image.shape), 1)
+                image_bkg_filter = cluster.fit_predict(shape_)
+                image_bkg_filter = image_bkg_filter.reshape(image.shape)
+                i_list = []
+                for n in range(n_clust_bg):
+                    image_ = image*(image_bkg_filter == n)
+                    i_n = np.average(image_[image_ > 0])
+                    i_list.append(i_n)
+                i_list = np.argsort(i_list)[::-1]
+                _image_bkg_filter_mask = np.zeros(image_bkg_filter.shape, dtype=bool)
+                for tn in range(top_n_clust_bg):
+                    _image_bkg_filter_mask += image_bkg_filter == i_list[tn]
+                return _image_bkg_filter_mask
     else:
         return np.ones(image.shape)
 
@@ -284,7 +292,9 @@ def segment(image, background_mask=np.array([]), window=5, n_clust=2, small_obje
     return remove_small_objects(im_seg, small_objects)
 
 
-def measure_regionprops(seg, raw):
+def measure_regionprops(seg, raw=None):
+    if isinstance(raw, type(None)):
+        raw = np.zeros(seg.shape)
     sp_ = regionprops(seg, intensity_image = raw)
     properties=['label','centroid','area','max_intensity','mean_intensity',
                 'min_intensity', 'bbox','major_axis_length', 'minor_axis_length',

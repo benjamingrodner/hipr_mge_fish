@@ -1,0 +1,1 @@
+snakemake -s Snakefile_convert --configfile config.yaml -j 2 -pn 

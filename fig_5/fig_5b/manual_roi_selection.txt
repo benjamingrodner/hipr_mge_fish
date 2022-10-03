@@ -1,0 +1,29 @@
+# Notes 2022_08_13 region selection 
+
+## Files
+
+Sample: 2022_03_19_plaquephagelytic_sample_bmg_probes_non_fov_tile1
+
+Spectral: Z:\2022_ALL_USER_IMAGES_HERE\Benjamin Grodner\2022_03_19_plaqueplasmidamr\mefe_hiprfish_images\2022_03_19_plaquephagelytic_sample_bmg_probes_non_fov_tile1_round_2_mode_spec[488,514,561,633]
+
+Airyscan: Z:\2022_ALL_USER_IMAGES_HERE\Benjamin Grodner\2022_03_19_plaqueplasmidamr\20222_03_19_plaqueplasmidamr_sample_hs_probe_mefe_fov_tile1_round_1_mode_airy_Airyscan Processing_stitch
+
+## Pre-processing
+
+1. Did max projection on each channel in spectral images, then created a new stack from the images and did max z projection on the new stack. Saved max projection to \\cbsuvlaminck2.biohpc.cornell.edu\workdir\bmg224\manuscripts\mgefish\outputs\fig_5\fig_5b
+
+2. Loaded airyscan image and split stack into images, then closed the spot channel (channel 2)
+
+3. Went to Process../enhance contrast in FIJI and picked 1% saturated for both images. Selected equalize histogram on airyscan image. 
+
+## ROI selection 
+
+1. Select ROI in airyscan image using freehand selection tool, add to roi manager (t), go to tab Edit/Selection/Create Mask, save tiff as SAMPLE_roi_#### to \\cbsuvlaminck2.biohpc.cornell.edu\workdir\bmg224\manuscripts\mgefish\outputs\fig_5\fig_5b\roi_masks\20222_03_19_plaqueplasmidamr_sample_hs_probe_mefe_fov_tile1_round_1_mode_airy_Airyscan_Processing_stitch
+
+2. Select same ROI in spectral image and save with same roi ####
+
+3. Repeat. 
+
+4. If you want to edit an roi save as same number plus "alt"
+
+5. For extra unpaired rois present in one image (spectral) but not the other, marked as 'unpaired'

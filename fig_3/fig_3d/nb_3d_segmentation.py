@@ -65,20 +65,17 @@ import spot_funcs as spf
 
 # %% md
 
-# =============================================================================
-# ## Set segmentation parameters
-# =============================================================================
+# Get sample names
+
+# %% codecell
+sample_names = pd.read_csv(config['input_table_fn']).sample_name.values
+sample_names
 
 # %% md
 
-# Get the input filenames. Reload the config file if you need to update the regular expression.
-
-# %% codecell
-input_filenames = glob.glob(config['input_dir'] + '/' + config['input_regex']
-                            + config['input_ext'])
-input_filenames.sort()
-print(len(input_filenames))
-input_filenames
+# =============================================================================
+# ## Set segmentation parameters
+# =============================================================================
 
 # %% md
 
@@ -86,20 +83,17 @@ input_filenames
 
 # %% codecell
 test_index = 1
-input_fn = input_filenames[test_index]
-input_fn
-
-# %% codecell
-javabridge.start_vm(class_path=bioformats.JARS)
-input = bioformats.load_image(input_fn)
-input.shape
+sn = sample_names[test_index]
+input = ip.load_output_file(config, 'raw_fmt',sn)
+print(sn)
+print(input.shape)
 
 # %% codecell
 n_channels = input.shape[2]
 n_channels
 
 # %% codecell
-clims = [(0,0.05),(0,0.025),(0,0.005)] # One color threshold tuple per channel
+clims = [(0,0.05),(0,0.05),(0,0.005)] # One color threshold tuple per channel
 im_list = [input[:,:,i] for i in range(n_channels)]
 ip.subplot_square_images(im_list, (1,n_channels), clims=clims)
 
@@ -115,6 +109,8 @@ ip.subplot_square_images(im_list, (1,n_channels), clims=clims)
 
 # %% md
 
+# ### Cell seg
+
 # Get cell seg channels.
 
 # %% codecell
@@ -128,17 +124,19 @@ im_cell.shape
 
 # %% md
 
-# Test spot seg parameters, adjust in the configuration file, and repeat until it's good. Also repeat with differnt subset regions.
+# Test cell seg parameters, adjust in the configuration file, and repeat until it's good. Also repeat with differnt subset regions.
 
 # %% codecell
-im_cell_mask_old, im_cell_pre_old, im_cell_seg_old = [sf.np.zeros((2,2))]*3
-im_cell_seg_old[0,0] = 1
+# need initial values to compare seg changes
+im_cell_mask, im_cell_pre, im_cell_seg = [sf.np.zeros((2,2))]*3
+im_cell_seg[0,0] = 1
 
 # %% codecell
-clims=(0,0.025)
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['cell_seg']
+
+im_cell_mask_old = im_cell_mask
 
 im_cell_mask = sf.get_background_mask(
     im_cell,
@@ -147,21 +145,31 @@ im_cell_mask = sf.get_background_mask(
     bg_smoothing=pdict['bg_smoothing'],
     n_clust_bg=pdict['n_clust_bg'],
     top_n_clust_bg=pdict['top_n_clust_bg'],
-    bg_threshold=pdict['bg_threshold']
+    bg_threshold=pdict['bg_threshold'],
+    bg_file=0
     )
+
+# %% codecell
+clims=(0,0.025)
 print('old')
 ip.subplot_square_images([im_cell, im_cell_mask_old], (1,2), clims=[clims,[]],)
 ip.plt.show()
 print('new')
 ip.subplot_square_images([im_cell, im_cell_mask], (1,2), clims=[clims,[]])
-im_cell_mask_old = im_cell_mask
 
 # %% codecell
-zc = [2000, 2000]
-zs = [500, 500]
+zc = [4800, 1500]
+zs = [1000, 1000]
+clims=(0,0.025)
+fig, ax, cbar = ip.plot_image(im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno', clims=clims)
+
+# %% codecell
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['cell_seg']
+
+im_cell_pre_old = im_cell_pre
+im_cell_seg_old = im_cell_seg
 
 im_cell_pre = sf.pre_process(
     im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
@@ -179,21 +187,21 @@ im_cell_seg = sf.segment(
     )
 
 # %% codecell
+clims = ((),(0,0.03), (0,0.5), ())
 print('old')
-im_list = [im_cell_mask_old[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
+im_list = [im_cell_mask[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
            im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_cell_pre_old,
            ip.seg2rgb(im_cell_seg_old)]
-ip.subplot_square_images(im_list, (1,4))
+ip.subplot_square_images(im_list, (1,4), clims=clims)
 ip.plt.show()
 print('new')
 im_list = [ im_cell_mask[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
             im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_cell_pre,
             ip.seg2rgb(im_cell_seg)]
-ip.subplot_square_images(im_list, (1,4))
-im_cell_pre_old = im_cell_pre
-im_cell_seg_old = im_cell_seg
+ip.subplot_square_images(im_list, (1,4), clims=clims)
 # seg_clims = max([clims[i] for i in config['cell_seg']['channels']])
 # ip.subplot_square_images(im_list, (1,4), clims=(seg_clims, seg_clims,'',''))
+
 
 # %% md
 
@@ -202,28 +210,37 @@ im_cell_seg_old = im_cell_seg
 # Below the segmentation projected onto the raw image
 
 # %% codecell
+clims=(0,0.025)
 fig, ax, cbar = ip.plot_image(im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno')
-ip.plot_seg_outline(ax, im_cell_seg, col=(0,0,0))
+ip.plt.show()
+ip.plt.close()
+fig, ax, cbar = ip.plot_image(im_cell[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno')
+ip.plot_seg_outline(ax, im_cell_seg, col=(0,0.75,0))
 
 # %% md
+
+# ### Spot seg
 
 # Test spot seg parameters, adjust in the configuration file, and repeat until it's good. Check all the spot seg channels.
 
 # %% codecell
 sp=0
-im_spot_list = [input[:,:,i] for i in config['spot_seg']['channels']]
-im_spot = im_spot_list[sp]
+s_ch = config['spot_seg']['channels'][sp]
+im_spot = input[:,:,s_ch]
+
+im_spot_mask, im_spot_pre, im_spot_seg = [sf.np.zeros(im_spot.shape)]*3
+for i in [im_spot_mask, im_spot_pre, im_spot_seg]:
+    i[0,0] = 1
 
 # %% codecell
-im_spot_mask_old, im_spot_pre_old, im_spot_seg_old = [sf.np.zeros((2,2))]*3
-im_spot_seg_old[0,0] = 1
-
-# %% codecell
-clims=(0,0.0025)
-
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['spot_seg']
+
+im_spot_mask_old = im_spot_mask
+
+bg_file_fmt = config['output_dir'] + '/' + config['spot_mask_bg_debris_fmt']
+bg_file = bg_file_fmt.format(sample_name=sn, channel=s_ch)
 
 im_spot_mask = sf.get_background_mask(
     im_spot,
@@ -232,14 +249,19 @@ im_spot_mask = sf.get_background_mask(
     bg_smoothing=pdict['bg_smoothing'],
     n_clust_bg=pdict['n_clust_bg'],
     top_n_clust_bg=pdict['top_n_clust_bg'],
-    bg_threshold=pdict['bg_threshold']
+    bg_threshold=pdict['bg_threshold'],
+    bg_file=bg_file
     )
+
+
+# %% codecell
+clims=(0,0.005)
+
 print('old')
 ip.subplot_square_images([im_spot, im_spot_mask_old], (1,2), clims=[clims,[]])
 ip.plt.show()
 print('new')
 ip.subplot_square_images([im_spot, im_spot_mask], (1,2), clims=[clims,[]])
-im_spot_mask_old = im_spot_mask
 
 # %% codecell
 zc = [4000, 4000]
@@ -247,6 +269,9 @@ zs = [500, 500]
 with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 pdict = config['spot_seg']
+
+im_spot_pre_old = im_spot_pre
+im_spot_seg_old = im_spot_seg
 
 im_spot_pre = sf.pre_process(
     im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
@@ -264,6 +289,7 @@ im_spot_seg = sf.segment(
     )
 
 # %% codecell
+clims=(0,0.005)
 print('old')
 im_list = [im_spot_mask_old[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
            im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_spot_pre_old,
@@ -275,8 +301,6 @@ im_list = [ im_spot_mask[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
             im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], im_spot_pre,
             ip.seg2rgb(im_spot_seg)]
 ip.subplot_square_images(im_list, (1,4), clims=[[],clims,clims,[]])
-im_spot_pre_old = im_spot_pre
-im_spot_seg_old = im_spot_seg
 # seg_clims = max([clims[i] for i in config['cell_seg']['channels']])
 # ip.subplot_square_images(im_list, (1,4), clims=(seg_clims, seg_clims,'',''))
 
@@ -288,7 +312,7 @@ im_spot_seg_old = im_spot_seg
 
 # %% codecell
 fig, ax, cbar = ip.plot_image(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]], cmap='inferno', clims=clims)
-ip.plot_seg_outline(ax, im_spot_seg, col=(0,0,0))
+ip.plot_seg_outline(ax, im_spot_seg, col=(0,0.5,0.5))
 
 # %% md
 
@@ -299,7 +323,9 @@ with open(config_fn, 'r') as f:
     config = yaml.safe_load(f)
 
 # maxs = spf.peak_local_max(im_spot, min_distance = config['local_max_mindist'])
-ma = spf._get_merged_peaks(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
+im_spot_ = im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]]
+im_spot_seg_ = (im_spot_seg > 0)
+ma = spf._get_merged_peaks(im_spot_ * im_spot_seg_,
                             min_distance=config['local_max_mindist'])
 # is_peak = spf.peak_local_max(im_spot, indices=False, min_distance=config['local_max_mindist']) # outputs bool image
 # is_peak.shape
@@ -308,8 +334,8 @@ ma = spf._get_merged_peaks(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
 # ma = np.array(merged_peaks)
 fig, ax, cbar = ip.plot_image(im_spot[zc[0]:zc[0]+zs[0],zc[1]:zc[1]+zs[1]],
                               cmap='inferno', im_inches=20, clims=clims)
-ax.scatter(ma[:,1],ma[:,0], s=50, color=(0,1,0))
-ax = ip.plot_seg_outline(ax, im_spot_seg, col=(0,0.8,0.8))
+ax.scatter(ma[:,1],ma[:,0], s=75, color=(0,1,0))
+ax = ip.plot_seg_outline(ax, im_spot_seg, col=(0,0.5,0.5))
 # ax.set_xlim((300,400))
 # ax.set_ylim((425,475))
 
@@ -318,26 +344,6 @@ ax = ip.plot_seg_outline(ax, im_spot_seg, col=(0,0.8,0.8))
 # ## Run the pipeline
 # =============================================================================
 
-# To run a test of the pipeline write an input table with only one file.
-
-# %% codecell
-input_fns_split = [os.path.split(fn)[1] for fn in [input_fn]]
-sample_names = [re.sub(config['input_ext'], '', fn) for fn in input_fns_split]
-input_table = pd.DataFrame(sample_names, columns=config['input_table_cols'])
-input_table.to_csv(config['input_table_fn'], index=False)
-sample_names
-
-# %% md
-
-# To run all the samples write a full input table.
-
-# %% codecell
-input_fns_split = [os.path.split(fn)[1] for fn in input_filenames]
-sample_names = [re.sub(config['input_ext'], '', fn) for fn in input_fns_split]
-input_table = pd.DataFrame(sample_names, columns=config['input_table_cols'])
-input_table.to_csv(config['input_table_fn'], index=False)
-input_table.values
-
 # %% md
 
 # Write the snakemake execution code to a bash script.
@@ -345,7 +351,7 @@ input_table.values
 # %% codecell
 dry_run = False  # Just create DAG if True
 n_cores = 2  # number of allowed cores for the snakemake to use
-force_run = False  # Pick a rule to re-run. False if you don't want a force run.
+force_run = 'segment_cells'  # Pick a rule to re-run. False if you don't want a force run.
 
 snakefile = config['snakefile_segment']
 dr = '-pn' if dry_run else '-p'
@@ -353,10 +359,12 @@ fr = '-R ' + force_run if force_run else ''
 command = " ".join(['snakemake', '-s', snakefile, '--configfile', config_fn, '-j',
                     str(n_cores), dr, fr])
 
-with open(config['run_segment_fn'], 'w') as f:
+run_fn = 'run_{}.sh'.format(snakefile)
+with open(run_fn, 'w') as f:
     f.write(command)
 
-command
+print(run_fn)
+print('$ ', command)
 
 # %% md
 
@@ -365,7 +373,7 @@ command
 # ```console
 # $ conda activate hiprfish_imaging_py38
 # $ cd /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_3/fig_3d
-# $ sh run_segment.sh
+# $ sh run_Snakefile_segment.sh
 # ```
 
 # Check the segmentation
@@ -395,3 +403,80 @@ for sn in sample_names:
         ip.subplot_square_images([_raw_chan, ip.seg2rgb(_seg)], (1,2))
         ip.plt.show()
         ip.plt.close()
+
+
+
+
+# %% md
+# =============================================================================
+# ## Plot SNR curves
+# =============================================================================
+
+# Plot pixels normalized by cell count vs snr threshold value
+
+# Get threshold curves
+
+# %% codecell
+slims = (0,150)
+n_sthr = 300
+sthreshs = sf.np.linspace(slims[0], slims[1], n_sthr)
+c_ch = config['cell_seg']['channels'][0]
+
+curves_df = pd.DataFrame([])
+for sn in sample_names:
+    # Get raw image
+    raw = ip.load_output_file(config, 'raw_fmt', sn)
+    # Get proper channel
+    raw_ch = raw[:,:,s_ch]
+    for s_ch in config['spot_seg']['channels']:
+        # Get background value
+        bg_mask = ip.load_output_file(config, 'spot_mask_bg_rough_fmt', sn, spot_chan=s_ch)
+        bg = raw_ch[bg_mask == 0]
+        bg_val = sf.np.mean(bg)
+        # Get SNR
+        props = ip.load_output_file(
+                config, 'spot_props_max_split_fmt', sn, spot_chan=s_ch
+                )
+        props['snr'] = props.max_intensity / bg_val
+        # Get the number of cells
+        cprops = ip.load_output_file(config, 'cell_props_fmt', sn, cell_chan=c_ch)
+        n = cprops.shape[0]
+        # Calculate ratio and add to curve values
+        curve = [props[props.snr > thr].shape[0] / n for thr in sthreshs]
+        curves_df[sn + '_spotchan_' + str(s_ch)] = curve
+        # Save threshold curve values
+
+# %% codecell
+# Pick a threshold
+xlims=(0,100)
+ylims=[0,1.1]
+dims=(4,4)
+lw=1
+ft=6
+dims=(1,0.5)
+
+colors = ip.get_cmap('tab10').colors
+cols = [colors[0], colors[0]]
+linestyles = ('dotted','solid')
+spot_curve_bg_fmt = config['output_dir'] + '/fig_3c_spot_count_curve_snr_thresh'
+# curves_df = ip.load_output_file(config, 'spot_vals_bg_curve_fmt')
+# Start a figure
+fig, ax = ip.general_plot(dims=dims, lw=lw, ft=ft)
+for sn, c, ls in zip(sample_names, cols, linestyles):
+    print(sn)
+    for s_ch in config['spot_seg']['channels']:
+        # Get curve
+        curve = curves_df[sn + '_spotchan_' + str(s_ch)].values
+        # Plot curve and threshold
+        ax.plot(sthreshs, curve, lw=lw, color=c, ls=ls)
+        # ax.plot([thr_pk_snr]*2, [0,1], 'k', lw=lw)
+        # ax.plot(list(xlims), [0,0],'k',lw=lw*0.5)
+        # adjust plot
+ax.set_xlim(xlims)
+# ax.set_ylim(ylims)
+# save plot
+output_basename = spot_curve_bg_fmt.format(sample_name=sn, spot_chan=s_ch)
+ip.save_png_pdf(output_basename)
+print(output_basename)
+# show plot
+ip.plt.show()

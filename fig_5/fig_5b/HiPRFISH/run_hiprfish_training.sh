@@ -1,0 +1,1 @@
+python ../../../scripts/HiPRFISH/hiprfish_imaging_train_reference.py -c config_hipr.yaml

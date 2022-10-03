@@ -10,13 +10,16 @@ import numpy as np
 import os
 from skimage.color import label2rgb
 from skimage.segmentation import find_boundaries
+from skimage.measure import regionprops
 from copy import copy
 from matplotlib_scalebar.scalebar import ScaleBar
 from matplotlib import colors
 from libpysal.weights.contiguity import Voronoi
+from libpysal.weights import Kernel, DistanceBand, KNN
 import esda
 import re
 from collections import defaultdict
+from scipy.stats import gaussian_kde
 
 
 # Take pysal W object and write to json file
@@ -67,14 +70,23 @@ def single_color_cmap(col):
 
 def plot_morans_i_sim(ax, mi, lw=1, col='k',ft=12, h=1, sim='sim', e='EI',i='I'):
     # cmap = single_color_cmap(sim_col)
-    pd.DataFrame(mi[sim], columns=['Simulation']).plot.kde(
-                                                            ax=ax,
-                                                            color=col,
-                                                            legend=False)
+    # pd.DataFrame(mi[sim], columns=['Simulation']).plot.kde(
+    #                                                 ax=ax,
+    #                                                 color=col,
+    #                                                 legend=False
+    #                                                 )
+    vals = mi[sim]
+    kernel = gaussian_kde(vals)
+    rng = np.max(np.abs([np.min(vals), np.max(vals)]))
+    x = np.linspace(mi[e]-rng, mi[e]+rng, 1000)
+    pdf = kernel.evaluate(x)
+    ax.plot(x,pdf, color=col, lw=lw)
+    ax.fill_between(x,0,pdf, facecolor=col,alpha=0.5)
     # pd.DataFrame(mi['sim'], columns=['Simulation']).plot.kde(ax=ax, cmap=cmap)
     # l = np.unique(mi['sim'])
-    ax.plot([mi[e]]*2, [0,h], label='Expected', color=col)
-    ax.plot([mi[i]]*2, [0,h], label='Observed', color=col)
+    ylims = ax.get_ylim()
+    ax.plot([mi[e]]*2, [0,ylims[1]*3/5], label='Expected', color='k', lw=lw*0.75)
+    ax.plot([mi[i]]*2, [0,ylims[1]/2], label='Observed', color=col, lw=lw*0.75)
     # ax.legend()
     return ax
 
@@ -282,3 +294,24 @@ def _group(kv_pairs, k_index):
         group = kv[0][k_index]
         list_dict[group].append(kv)
     return list_dict
+
+
+def measure_regionprops(seg, raw):
+    sp_ = regionprops(seg, intensity_image = raw)
+    properties=['label','centroid','area','max_intensity','mean_intensity',
+                'min_intensity', 'bbox','major_axis_length', 'minor_axis_length',
+                'orientation','eccentricity','perimeter']
+    df = pd.DataFrame([])
+    for p in properties:
+        df[p] = [s[p] for s in sp_]
+    for j in range(2):
+        df['centroid-' + str(j)] = [r['centroid'][j] for i, r in df.iterrows()]
+    for j in range(4):
+        df['bbox-' + str(j)] = [r['bbox'][j] for i, r in df.iterrows()]
+    # regions = regionprops_table(seg, intensity_image = raw,
+    #                             properties=['label','centroid','area','max_intensity',
+    #                             'mean_intensity','min_intensity', 'bbox',
+    #                             'major_axis_length', 'minor_axis_length',
+    #                             'orientation','eccentricity','perimeter'])
+    # return pd.DataFrame(regions)
+    return df

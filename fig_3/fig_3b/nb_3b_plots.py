@@ -161,7 +161,7 @@ for sn in sample_names:
 
 # %% codecell
 xlims=(0,55)
-ylims=(0,10)
+ylims=(0,100)
 dims=(4,1)
 fig_outname_fmt = config['figure_dir'] + '/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_cell_spot_count_hist'
 for sn in sample_names:
@@ -174,7 +174,10 @@ for sn in sample_names:
         print('Channel: ', s_ch)
         print(bins)
         plt.figure(figsize=dims)
-        plt.hist(spot_counts, bins=int(bins))
+        try:
+            plt.hist(spot_counts, bins=int(bins))
+        except:
+            print("issue with plotting histogram")
         plt.xlim(xlims[0],xlims[1])
         plt.ylim(ylims[0],ylims[1])
         fig_outname = fig_outname_fmt.format(sample_name=sn, cell_chan=c_ch, spot_chan=s_ch)
@@ -259,7 +262,7 @@ for sn in sample_names:
         print(output_filename)
 
 # %% codecell
-clims = (0,filt)
+clims = (0,3)
 cmap = apl.get_cmap('autumn')(np.linspace(0,1,256))
 cmap[0] = [0.5,0.5,0.5,1]
 cmap = apl.ListedColormap(cmap)
@@ -299,6 +302,10 @@ cell_props.shape
 # Get spatial weights matrix
 
 # %% codecell
+# r = 50  # pixel radius to construct neigbors graph
+k=20  # set number of nearest neighbors to include as connections
+# f='triangular'  # Decay function of weights with distance
+c_ch = config['cell_seg']['channels'][0]
 weights_fmt = config['output_dir'] + '/' + config['weights_fmt']
 for sn in sample_names:
     cell_props = apl.load_output_file(
@@ -313,7 +320,10 @@ for sn in sample_names:
     cell_props_ = cell_props[bool_area & bool_sc]
     points = cell_props_.centroid.apply(lambda x: eval(x))
     points = np.array([list(p) for p in points])
-    w = apl.Voronoi(points)
+    w = apl.KNN(points, k)
+    # w = apl.DistanceBand(points, r)
+    # w = apl.Kernel(points, fixed=False, k=k, function=f)
+    # w = apl.Voronoi(points)
     w_fn = weights_fmt.format(sample_name=sn, cell_chan=c_ch)
     sv = apl.save_weights(w, w_fn)
     print(w_fn)
@@ -342,7 +352,10 @@ for sn in sample_names:
         bool_sc = (cell_props.spot_count_outlier_thresh == 1)
         y = cell_props.loc[bool_area & bool_sc, 'spot_count_ch_' + str(s_ch)] > 0
         # Moran's I calculation, save the I stat and the p value for the simulation-based null
-        jc = apl.esda.join_counts.Join_Counts(y,w)
+        try:
+            jc = apl.esda.join_counts.Join_Counts(y,w)
+        except:
+            print('there was an error with the join counts calculation')
         jc_ = jc.__dict__
         for k, v in jc_.items():
             remove = ['pandas','libpysal','method']
@@ -374,7 +387,8 @@ for sn in sample_names:
 # %% codecell
 lw=1
 ft = 6
-dims = (2,1)
+# dims = (2,1)
+dims = (1.0,0.5)
 col = 'k'
 colors = apl.get_cmap_listed('tab10')
 line_colors = [colors[0],colors[1]]
@@ -384,7 +398,7 @@ xlims = (0.65,2.05)
 ylabel = ''
 yticks = []
 pad = 0.2
-h=0.01
+h=1
 
 
 join_counts_plot_fmt = config['figure_dir'] + '/{sample_name}_chan_{spot_chan}_join_counts'
@@ -405,7 +419,12 @@ for s_ch in config['spot_seg']['channels']:
         print('WW: ', jc['ww'])
         print('mean_bb: ', jc['mean_bb'])
         print('p_sim_bb: ', jc['p_sim_bb'])
-        apl.plot_morans_i_sim(ax, jc, sim='sim_bb', e='mean_bb', i='bb', col=l_col, h=h)
+        try:
+            apl.plot_morans_i_sim(ax, jc, sim='sim_bb', e='mean_bb', i='bb', col=l_col, h=h)
+        except:
+            print('there was an issue plotting simulation')
+        print(ax.get_yticklabels())
+        # ax.set_yticklabels([])
     output_fn = join_counts_plot_fmt.format(sample_name=sn, spot_chan=s_ch)
     apl.save_png_pdf(output_fn, bbox_inches=False)
     plt.show()
@@ -429,7 +448,6 @@ for sn in sample_names:
                     sn,
                     cell_chan=c_ch
                     )
-    mi_dict[sn] = {}
     for s_ch in config['spot_seg']['channels']:
         w.transform = 'r'
         cell_props.columns
@@ -437,7 +455,10 @@ for sn in sample_names:
         bool_sc = (cell_props.spot_count_outlier_thresh == 1)
         y = cell_props.loc[bool_area & bool_sc, 'spot_count_ch_' + str(s_ch)]
         # Moran's I calculation, save the I stat and the p value for the simulation-based null
-        mi = apl.esda.moran.Moran(y,w)
+        try:
+            mi = apl.esda.moran.Moran(y,w)
+        except:
+            print('Error with morans i calc')
         mi_ = mi.__dict__
         mi_['w'] = 'weights matrix saved as .npy file'
         mi_['y'] = mi.y.tolist()
@@ -457,7 +478,7 @@ for sn in sample_names:
 # %% codecell
 lw=1
 ft = 6
-dims = (2,1)
+dims = (1.1,0.5)
 col = 'k'
 colors = apl.get_cmap_listed('tab10')
 line_colors = [colors[0],colors[1]]
@@ -470,9 +491,9 @@ pad = 0.2
 h=100
 
 for s_ch in config['spot_seg']['channels']:
-    fig, ax = apl.general_plot(col=col, dims=dims, lw=lw, ft=ft, pad=pad)
     print('Channel: ', s_ch)
     for sn, l_col in zip(sample_names, line_colors):
+        fig, ax = apl.general_plot(col=col, dims=dims, lw=lw, ft=ft, pad=pad)
         print('Sample: ', sn)
         # ax.set_xticks(xticks)
         # ax.set_xticklabels([],visible=False)
@@ -483,19 +504,18 @@ for s_ch in config['spot_seg']['channels']:
                 )
         print('I: ', mi['I'])
         print('p_sim: ', mi['p_sim'])
-        apl.plot_morans_i_sim(ax, mi, lw=lw, ft=ft, col=l_col, h=h)
-    output_fn = config['figure_dir'] + '/moransI_chan_' + str(s_ch)
-    apl.save_png_pdf(output_fn, bbox_inches=False)
-    plt.show()
-
-
-
-
-
-
-
-
-
+        try:
+            apl.plot_morans_i_sim(ax, mi, lw=lw, ft=ft, col=l_col, h=h)
+            ax.set_xlim(-0.03, 0.03)
+            ax.set_xticks([-0.02, 0, 0.02])
+            ax.set_xticklabels([-0.02, 0, 0.02])
+            ax.set_ylabel(None)
+        except:
+            print('issue plotting')
+        output_fn = config['figure_dir'] + '/' + sn + '_moransI_chan_' + str(s_ch)
+        apl.save_png_pdf(output_fn, bbox_inches=False)
+        print(output_fn)
+        plt.show()
 
 
 

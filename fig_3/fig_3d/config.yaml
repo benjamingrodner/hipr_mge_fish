@@ -17,6 +17,7 @@ figure_dir: ../../../outputs/fig_3/fig_3d/figures
 pipeline_path: ../..
                 # relative path to the segmentation  pipeline folder from workdir
 functions_path: functions  # Path to function scripts relative to the pipeline path
+snakefile_convert: Snakefile_convert  # relative path to the snakefile
 snakefile_segment: Snakefile_segment  # relative path to the snakefile
 snakefile_multimax: Snakefile_multimax
 snakefile_spottocell: Snakefile_spottocell
@@ -28,7 +29,6 @@ input_regex: '*'
 input_table_cols: [sample_name]  # Add to if you want different params for
                                   # different images, one colum must be "sample_name"
 conda_env: hiprfish_imaging_py38
-run_segment_fn: run_segment.sh  # Bash script to execute and document your run command
 run_multimax_fn: run_multimax.sh  # Bash script to execute and document your run command
 run_spottocell_fn: run_spottocell.sh  # Bash script to execute and document your run command
 # conda_env_fn: ../envs/hiprfish_imaging_py38.yaml  # environment filename relative
@@ -41,7 +41,7 @@ cell_seg:
   pre_log: False  # Pre-processing: take the log? used for high signal variance
   pre_denoise: 0.01  # total variation denoising weight zero to turn off
   pre_gauss: 0  # Gaussian filter? no if zero, otherwise value sets the sigma
-  diff_gauss: (0,)  # Difference of gaussians edge enhancement?...set to (0,) if not
+  diff_gauss: (3,21)  # Difference of gaussians edge enhancement?...set to (0,) if not
   bg_filter: True  # Do we even want to subtract the background?
   bg_log: False  # Take the log of the image in auto background subtraction
   bg_smoothing: 5  # Pixels for gaussian blurring in auto background subtraction
@@ -49,6 +49,9 @@ cell_seg:
   top_n_clust_bg: 4  # how many clusters to use as foreground in auto background subtraction
   bg_threshold: 0  # Manual value of background subtraction threshold
                   # overrides auto background subtraction
+  bg_file: 0
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
   n_clust: 2  # Number of clusters to use in LNE foreground selection (only selects the highest intensity one)
   small_objects: 50  # Remove segmented objects with pixel area smaller than this value
   maxima: False  # Locate maxima in segmentaiton and get intensities there
@@ -68,6 +71,9 @@ spot_seg:
   top_n_clust_bg: 4  # how many clusters to use as foreground in auto background subtraction
   bg_threshold: 0  # Manual value of background subtraction threshold
                   # overrides auto background subtraction
+  bg_file: spot_mask_bg_debris_fmt
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
   n_clust: 2  # Number of clusters to use in LNE foreground selection
   small_objects: 9  # Remove segmented objects with pixel area smaller than this value
   maxima: False  # Locate maxima in segmentaiton and get intensities there
@@ -78,8 +84,15 @@ local_max_mindist: 3
 max_dist_to_cell: 5
 
 ## Filename formatting
-# Pipeline segmentaiton
+## Filename formatting
 raw_fmt: raw_npy/{sample_name}.npy
+# background_mask
+spot_mask_bg_rough_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg_rough.npy
+spot_mask_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg.npy
+spot_props_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_props_bg.csv
+spot_mask_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{channel}_spot_mask_bg_debris.npy
+spot_props_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{channel}_spot_props_bg_debris.csv
+# Pipeline segmentaiton
 cell_seg_fmt: cell_seg/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg.npy
 spot_seg_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg.npy
 cell_props_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_props.csv
@@ -112,3 +125,4 @@ cell_seg_spot_count_fmt: cell_seg/{sample_name}/{sample_name}_cellchan_{cell_cha
 # Spatial stats
 weights_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_weights.npy
 morans_i_fmt: cell_seg_props/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_morans_i.json
+join_counts_fmt: cell_seg_props/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_join_counts.json

@@ -1,0 +1,12 @@
+{
+    "__default__" :
+    {
+        "SCRIPTS_PATH" : "/fs/cbsuvlaminck2/workdir/bmg224/hiprfish/image_analysis_code/HiPRFISH_plaque",
+        "DATA_DIR" : "/fs/cbsuvlaminck2/workdir/bmg224/hiprfish/plaque/experiments/2022_03_19_plaquephagelytic/HiPRFISH/run_001",
+        "PROBE_DESIGN_DIR" : "/fs/cbsuvlaminck2/workdir/Data/HIPRFISH/Simulations/DSGN0672-0690"
+    },
+    "images" :
+    {
+        "image_list_table" : "/fs/cbsuvlaminck2/workdir/bmg224/hiprfish/plaque/experiments/2022_03_19_plaquephagelytic/HiPRFISH/run_001/images_table_001.csv"
+    }
+}

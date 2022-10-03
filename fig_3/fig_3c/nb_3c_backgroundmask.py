@@ -102,7 +102,7 @@ input_table.values
 # Write the snakemake execution code to a bash script.
 
 # %% codecell
-dry_run = False  # Just create DAG if True
+dry_run = True  # Just create DAG if True
 n_cores = 2  # number of allowed cores for the snakemake to use
 force_run = False  # Pick a rule to re-run. False if you don't want a force run.
 
@@ -432,13 +432,13 @@ for sn in sample_names:
         # Get bool for area threshold
         props['area_thresh'] = (props.area < thr_pk_area).astype(int)
         # Save new regionprops
-        output_filename = spot_props_bg_debris_fmt.format(sample_name=sn, spot_chan=s_ch)
+        output_filename = spot_props_bg_debris_fmt.format(sample_name=sn, channel=s_ch)
         props.to_csv(output_filename, index=False)
         # Remove filtered objects from mask
         mask_new = ip.filter_seg_objects(mask_old, props, 'area_thresh')
         # New mask on raw image
         # Save new mask
-        output_filename = spot_mask_bg_debris_fmt.format(sample_name=sn, spot_chan=s_ch)
+        output_filename = spot_mask_bg_debris_fmt.format(sample_name=sn, channel=s_ch)
         np.save(output_filename, mask_new)
         # show the images side by side
 
@@ -454,7 +454,7 @@ for sn in sample_names:
         raw_ch = raw[:,:,s_ch]
         mask_old = ip.load_output_file(config, 'spot_mask_bg_fmt', sn, spot_chan=ch)
         raw_mask_old = raw_ch * (mask_old > 0)
-        mask_new = ip.load_output_file(config, 'spot_mask_bg_debris_fmt', sn, spot_chan=ch)
+        mask_new = ip.load_output_file(config, 'spot_mask_bg_debris_fmt', sn, channel=ch)
         raw_mask_new = raw_ch * (mask_new > 0)
         im_list = [raw_ch, mask_old, mask_new]
         ip.subplot_square_images(im_list, (1,3), clims=[clims,clims,clims])
@@ -552,7 +552,7 @@ for i, (sn, c, ls) in enumerate(zip(sample_names_reversed, cols, linestyles)):
         bg_mask = ip.load_output_file(config, 'spot_mask_bg_fmt', sn, spot_chan=s_ch)
         c_mask = ip.load_output_file(config, 'spot_mask_bg_rough_fmt', sn, spot_chan=c_ch)
         pix_mask = np.sum(bg_mask>0)
-        bg_mask_area = ip.load_output_file(config, 'spot_mask_bg_debris_fmt', sn, spot_chan=s_ch)
+        bg_mask_area = ip.load_output_file(config, 'spot_mask_bg_debris_fmt', sn, channel=s_ch)
         pix_mask_area = np.sum(bg_mask_area > 0)
         pix_16s = np.sum(c_mask > 0)
         pix_removed = (pix_mask - pix_mask_area) / pix_16s
@@ -584,7 +584,7 @@ for sn in sample_names:
     raw_ch = raw[:,:,s_ch]
     for s_ch in config['spot_seg']['channels']:
         # Get background mask
-        props = ip.load_output_file(config, 'spot_props_bg_debris_fmt', sn, spot_chan=s_ch)
+        props = ip.load_output_file(config, 'spot_props_bg_debris_fmt', sn, channel=s_ch)
         bg_val = bg_df[sn + '_spotchan_' + str(s_ch)].values[0]
         props['snr'] = props.max_intensity / bg_val
         # Get the number of pixels before thresholding

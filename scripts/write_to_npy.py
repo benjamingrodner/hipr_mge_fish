@@ -25,6 +25,7 @@ def main():
     args = parser.parse_args()
 
     image = bioformats.load_image(args.in_fn)
+    print('look here!', args.in_fn, image.shape)
     np.save(args.out_fn, image)
     print('Wrote: ', args.out_fn)
     return

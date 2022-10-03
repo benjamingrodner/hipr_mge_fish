@@ -1,0 +1,1 @@
+snakemake -s Snakefile_segment --configfile config.yaml -j 1 -p -R segment_spots

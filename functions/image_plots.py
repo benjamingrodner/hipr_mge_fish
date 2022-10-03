@@ -12,7 +12,7 @@ from skimage.segmentation import find_boundaries
 import os
 from matplotlib.cm import get_cmap
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap
-
+import matplotlib.colors as pltcolors
 
 def get_discrete_colorbar(vals, cmp, integers=True):
     l = max(vals)-min(vals)
@@ -231,6 +231,35 @@ def filter_seg_objects(seg, props, filter):
     return seg_new
 
 
+def load_output_file(config, fmt, sample_name='', cell_chan='', spot_chan='',channel=''):
+    fn = (config['output_dir'] + '/'
+                + config[fmt].format(sample_name=sample_name,
+                                         channel=channel,
+                                         cell_chan=cell_chan,
+                                         spot_chan=spot_chan))
+    ext = os.path.splitext(fn)[1]
+    if ext == '.npy':
+        return np.load(fn)
+    elif ext == '.csv':
+        return pd.read_csv(fn)
+    elif ext == '.json':
+        with open(fn) as f:
+            file = json.load(f)
+        return file
+    else:
+        raise ValueError('must be csv or npy or json file')
+    return
+
+
+def save_png_pdf(basename, bbox_inches='tight', dpi=1000):
+    for ext in ['.pdf','.png']:
+        fn = basename + ext
+        if bbox_inches:
+            plt.savefig(fn, transparent=True, bbox_inches=bbox_inches, dpi=dpi)
+        else:
+            plt.savefig(fn, transparent=True, dpi=dpi)
+
+
 def load_output_file(config, fmt, sample_name='', cell_chan='', spot_chan=''):
     fn = (config['output_dir'] + '/'
                 + config[fmt].format(sample_name=sample_name,
@@ -250,10 +279,95 @@ def load_output_file(config, fmt, sample_name='', cell_chan='', spot_chan=''):
     return
 
 
-def save_png_pdf(basename, bbox_inches='tight', dpi=1000):
-    for ext in ['.pdf','.png']:
-        fn = basename + ext
-        if bbox_inches:
-            plt.savefig(fn, transparent=True, bbox_inches=bbox_inches, dpi=dpi)
+def zero_one_thresholding(im, clims):
+    im = im/np.max(im)
+    im[im > clims[1]] = clims[1]
+    im[im < clims[0]] = clims[0]
+    im = (im - clims[0]) / (clims[1] - clims[0])
+    return im
+
+
+def color_bc_image(im_bc, barcodes, cols, im_int=np.array([])):
+    threeD = isinstance(cols[0], tuple) or isinstance(cols[0], list)
+    if threeD:
+        im_col = np.zeros(im_bc.shape + (len(cols[0]),))
+        if im_int.shape[0]==0:
+            for bc, c in zip(barcodes, cols):
+                im_col += (im_bc==bc)[...,None] * c
         else:
-            plt.savefig(fn, transparent=True, dpi=dpi)
+            for bc, c in zip(barcodes, cols):
+                temp = im_int*(im_bc==bc)
+                im_col += temp[...,None] * c
+    else:
+        im_col = np.zeros(im_bc.shape)
+        if im_int.shape[0]==0:
+            for bc, c in zip(barcodes, cols):
+                im_col += (im_bc==bc) * c
+        else:
+            for bc, c in zip(barcodes, cols):
+                temp = im_int*(im_bc==bc)
+                im_col += temp * c
+    return im_col
+
+
+def taxon_legend(taxon_names, taxon_colors, label_color='k', taxon_counts=[],
+                 text_shift_vh=(6,0.15), ft=20, dims=(6,10), lw=2, ylabel='Genus'):
+    fig, ax = general_plot(ylabel=ylabel, dims=dims, col=label_color, lw=lw, ft=ft)
+    vals = np.repeat(10,len(taxon_names))
+    y_pos = np.arange(len(taxon_names))
+    ax.barh(y_pos, vals, align='center', color=taxon_colors)
+    if len(taxon_counts)>0:
+        # Label the legend with counts
+        for i, (v, c) in enumerate(zip(vals, taxon_counts)):
+            ax.text(v - text_shift_vh[0], i + text_shift_vh[1] ,
+                    str(c), color='k', fontsize=ft)
+    # Remove the boundaries
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    # Add the genus names to the y axis
+    ax.set_yticks(y_pos)
+    ax.set_xticks([])
+    ax.set_yticklabels(taxon_names)
+    ax.invert_yaxis()
+    return(fig, ax)
+
+def get_line_histogram_x_vals(bin_edges):
+    return 0.5*(bin_edges[1:]+bin_edges[:-1]).flatten()
+
+
+def highlight_taxa(ax, hipr_bc, highlighted_barcodes, cols):
+    '''
+    Overlay segmented taxa on an image
+    ax: (matplotlib.pyplot Axes object)
+            Containins the image over which to show segmented taxa.
+    hipr_bc: (numpy array of integers of shape (m x n))
+            Image segmentation with objects labeled by cell barcode.
+    highlighted_barcodes: (list of integers of length k)
+            Which barcodes from 'hipr_bc' to overlay on 'ax'.
+    colors: (list of tuples length k)
+            RGB values to use. The tuple 'colors[i]' is used on
+            'highlighted_barcodes[i]'.
+    '''
+    # Get size of axes to project the overlay
+    extent = 0, hipr_bc.shape[1], hipr_bc.shape[0], 0
+    for bc, col in zip(highlighted_barcodes, cols):
+        # Get mask
+        mask = 1*(hipr_bc == bc)
+        # mask[mask > 0] = 1
+        # Set the zero values as see through
+        mask = mask.astype(np.float64)
+        mask[mask == 0] = np.nan
+        # Set up colormap such that nan values are see-through
+        cmap_temp = copy(plt.cm.get_cmap('gray'))
+        cmap_temp.set_bad(alpha = 0)
+        # Set barcode values as the assigned color
+        cmap_temp.set_over(col, 1.0)
+        # Overlay the cells on the image
+        ax.imshow(
+                mask,
+                cmap=cmap_temp,
+                norm=pltcolors.Normalize(vmin=0, vmax=0.1),
+                extent=extent,
+                interpolation='none'
+                )
+    return ax
