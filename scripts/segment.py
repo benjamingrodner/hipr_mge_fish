@@ -70,7 +70,8 @@ def main():
         im_pre,
         background_mask = im_mask,
         n_clust=pdict['n_clust'],
-        small_objects=pdict['small_objects']
+        window=pdict['window'],
+        small_objects=pdict['small_objects'],
         )
 
 

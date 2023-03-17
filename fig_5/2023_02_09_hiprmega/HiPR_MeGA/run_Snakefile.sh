@@ -1,0 +1,1 @@
+snakemake -s Snakefile --configfile config.yaml -j 11 -p 

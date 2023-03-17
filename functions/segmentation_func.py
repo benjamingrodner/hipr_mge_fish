@@ -204,20 +204,27 @@ def _get_rough_segmentation(im_lne, n_clust=2):
 def _normalize_zero_one(image):
     return (image - np.min(image))/(np.max(image) - np.min(image))
 
+
+def _get_watershed_seeds():
+    peak_local_max(image, min_distance=1, indices=False)
+
 # =============================================================================
 # Wrapper functions
 # =============================================================================
 
 def max_projection(raw, channels):
     # maximum projection on raw channel(s)
-    if channels == 'all':
-        im_list = [raw[:,:,i] for i in range(raw.shape[2])]
+    if len(raw.shape) == 3:
+        if channels == 'all':
+            im_list = [raw[:,:,i] for i in range(raw.shape[2])]
+        else:
+            im_list = [raw[:,:,i] for i in channels]
+        if len(im_list) > 1:
+            raw_2D = np.max((np.dstack(im_list)), axis=2)
+        else:
+            raw_2D = im_list[0]
     else:
-        im_list = [raw[:,:,i] for i in channels]
-    if len(im_list) > 1:
-        raw_2D = np.max((np.dstack(im_list)), axis=2)
-    else:
-        raw_2D = im_list[0]
+        raw_2D = raw
     return raw_2D
 
 
@@ -275,9 +282,11 @@ def get_background_mask(image, bg_filter=True, bg_file=False, bg_log=False,
         return np.ones(image.shape)
 
 
+
 # def segment(image, window=5, n_clust=2, bg_log=False, bg_smoothing=0, bg_filter=True,
 #             n_clust_bg=2, top_n_clust_bg=1, bg_threshold=0, small_objects=50):
-def segment(image, background_mask=np.array([]), window=5, n_clust=2, small_objects=50):
+def segment(image, background_mask=np.array([]), window=5, n_clust=2,
+            small_objects=50, seed_image='input'):
     im_lne = _lne(image, window=window)
     rough_seg = _get_rough_segmentation(im_lne, n_clust=n_clust)
     # background_filter = _get_background_filter(image, bg_log=bg_log, bg_smoothing=bg_smoothing,
@@ -286,6 +295,11 @@ def segment(image, background_mask=np.array([]), window=5, n_clust=2, small_obje
     background_filter = background_mask if background_mask.shape[0] > 0 else np.ones(image.shape)
     watershed_input = image*background_filter
     seeds = peak_local_max(image, min_distance=1, indices=False)
+    # if isinstance(seed_image, str):
+    #     if seed_image == 'input':
+    #         seeds = peak_local_max(image, min_distance=1, indices=False)
+    #     elif seed_image == 'lne':
+    #         seeds = peak_local_max(im_lne, min_distance=1, indices=False)
     mask = rough_seg*background_filter
     im_seg = watershed(-watershed_input, seeds, mask=mask)
     im_seg = label(im_seg)

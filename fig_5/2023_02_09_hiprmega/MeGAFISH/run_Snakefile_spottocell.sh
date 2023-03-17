@@ -1,0 +1,1 @@
+snakemake -s Snakefile_spottocell --configfile config_mgefish.yaml -j 11 -p 

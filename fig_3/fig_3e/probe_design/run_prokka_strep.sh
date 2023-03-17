@@ -1,0 +1,1 @@
+prokka -outdir ../../../../outputs/fig_3/fig_3e/probe_design/prokka/S5C63 -prefix S5C63 ../../../../outputs/fig_3/fig_3e/probe_design/S5C63_rename.fna

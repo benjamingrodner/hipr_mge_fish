@@ -1,0 +1,124 @@
+### Configuration File
+# This is an example configuration file for the split probe design pipeline. Adjust
+    # as necessary for your needs.
+# These values get loaded into the snakemake as a dictionary in the variable 'config'
+
+## Paths
+# Make all of your paths relative to the location where you will execute the snakemake
+    # in the command line
+input_dir: inputs # Path to wherever your 'input_filenames' are
+
+# probe_generate_dir: ../../../../outputs/fig_3/fig_3e/probe_design/primer3  # Where to put the brute force primer3 design
+# target_alignment_dir: ../../../../outputs/fig_3/fig_3e/probe_design/target_alignment
+# probe_select_dir: ../../../../outputs/fig_3/fig_3e/probe_design/probe_selection
+# spacer_select_dir: ../../../../outputs/fig_3/fig_3e/probe_design/spacer_selection
+# crosstalk_dir: ../../../../outputs/fig_3/fig_3e/probe_design/crosstalk
+# helper_select_dir: ../../../../outputs/fig_3/fig_3e/probe_design/helper_selection
+# final_outputs_dir: ../../../../outputs/fig_3/fig_3e/probe_design/final_outputs
+
+output_dir: ../../../../outputs/fig_3/fig_3e/probe_design/MGEFISH
+
+target_alignment_dir: target_alignment
+filter_target_alns_dir: pident_80_qcovhsp_30/filter_target_alns
+
+prep_targets_dir: prep_targets
+design_probes_dir: design_probes
+
+bowtie_probes_dir: bowtie_msm_3/bowtie_probes
+filter_bowtie_dir: bowtie_msm_3/filter_bowtie
+
+vsearch_probes_dir: vsearch_probes
+filter_vsearch_dir: filter_vsearch
+blast_probes_dir: blast_probes
+measure_blasts_dir: measure_blasts
+filter_blasts_dir: pident_80_qcovhsp_30/mch_15_gc_9/filter_blasts
+eval_probes_dir: pident_80_qcovhsp_30/mch_15_gc_9/evaluate_probes
+
+
+blast_database: ../../../../outputs/fig_5/metagenomic_analysis/contig_blastdb/2021_04_03_contigs.fna
+flanking_regions_filename: /fs/cbsuvlaminck2/workdir/bmg224/hiprfish/probe_design/split_probe_design/references/split_hcr_flanking_regions.csv # File containing the
+                                                                            # readout sequences
+pipeline_dir: /fs/cbsuvlaminck2/workdir/bmg224/hiprfish/probe_design/split_probe_design # Path to the 'split_probe_design' directory cloned from github
+
+## Inputs
+input_filenames: [
+  phage_terminase_large.fasta
+  ]
+on_target_id_filename: False
+                        # File in input folder containing manually
+                        # collected on-target sequence ids in the database
+                        # Tab format with columns: sseqid,sstart,send,aln_sub (bool for if we should consider only a subset of that sseqid between sstart,send, or the whole thing).
+                        # Otherwise set to False
+target_naming: {
+  'S3CNODE_869_length_18620_cov_133.907353_14':'termL_Act',
+  'S5CNODE_889_length_19238_cov_56.809050_10':'termL_Capn'
+  }
+                                          # Dictionairy specifying easy-to-read
+                                                                # names for each target
+target_flanking: {
+  'S3CNODE_869_length_18620_cov_133.907353_14':'B2',
+  'S5CNODE_889_length_19238_cov_56.809050_10':'B2'
+  }
+                                    # Assign each target a readout region by
+                                    # referencing an ID from the
+                                    # 'flanking_regions_filename'
+blast_db_size_str: {'(?<=size=)\d+': '1', '(?<=cov_)\d+.\d+':'1'}
+      # If you want to ignore blast results to targets with low coverage,
+      # specify the regex to get the coverage value
+      # and the associated value which coverage must be greater than
+
+## Params
+threads:
+  probe_vsearch: 4
+  probe_blast: 4
+  mt_mode: 0
+  filter_threads: 7
+
+target_alignment:
+  target_in_db: True  # If you are certain the targets are not present in the database set to false
+  min_pident: 80  # Targets are blasted against database. Set minimum percent identity
+                  # for database alignments to be assigned as "on-target"
+  min_qcovhsp: 30 # Set the minimum query coverage
+
+design_reverse_complement: False # Probes will have the same sequence as the input target, so
+                                    # they will hybridize to the reverse complement of the input
+                                    # sequence. If you want your probes to hybridize to the input
+                                    # sequence, set design_reverse_complement as True.
+
+probe_length: # primer3 input for brute-force designing oligos
+    min_size: 18
+    opt_size: 20
+    max_size: 22
+
+# If you want to design against a double stranded DNA database, set blast_strand
+    # to both. If you are only worried about things binding off target to RNA,
+    # set strand to minus
+blast_strand: both
+vsearch:
+  id: 0.9  # Minimum similarity to be a strong alignment in first filter
+  strand: both
+bowtie:
+  mismatches: 3
+  offrate: 3
+
+maximum_pair_distance_bp: 2 # Maximum allowed distance in bases between probe pairs
+mch_filter: 15 # Maximum continuous homology for an off-target blast result to not be considered
+                    # a strong interaction. Results less than or equal to this value are
+                    # ignored, results greater than this value are counted as an off-target
+                    # hybridization
+tm_filter: 45 # Maximum melting temperature for a blast result to not be considered strong
+gc_filter: 9 # Maximum GC count for a blast result to not be considered strong
+minimum_bp_between_off_target_sites: 1500 # If a left and right probe hybridize off-target at
+                                              # a distance from each other (in bases) less
+                                              # than this value, then the probe pair will be
+                                              # removed
+maximum_crosstalk_events: 9 # The maximum number of times a probe pair can have off-target
+                                  # interactions with another probe (as defined by
+                                  # 'minimum_bp_between_off_target_sites') in the probe set
+select_alternate_design: False  # Pairs are selected to minimize the left probe off target results
+                                # unless this is set to True, in which case the right probes are minimized
+
+get_helpers:
+    same_strand: True  # If True, design probes without flanking regions and without specificit
+    other_strand: False  # If True, design helper probes for the reverse complement
+                            # strand as well as the gaps in the probe strand

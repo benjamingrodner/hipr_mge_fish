@@ -1,0 +1,1 @@
+snakemake -s Snakefile_convert --configfile config_mgefish.yaml -j 11 -p 

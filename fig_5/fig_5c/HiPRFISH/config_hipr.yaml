@@ -1,0 +1,56 @@
+# Configuration yaml
+# =============================================================================
+# Created By  : Ben Grodner
+# Created : 10/3/22
+# =============================================================================
+# Configuration file for Fig 5c
+# These values get loaded into the snakemake and notebook as a dictionary in the variable 'config'
+# =============================================================================
+
+## Paths
+### used in the notebook
+pipeline_path: ../../..  # relative path to the segmentation  pipeline folder from workdir
+functions_path: functions  # Path to function scripts relative to the pipeline path
+
+### This terminology is to adapt to the old hiprfish scripts
+__default__:
+  SCRIPTS_PATH: ../../../scripts/HiPRFISH
+  DATA_DIR: ../../../../data/fig_5/fig_5c  # Relative path to wherever your input images are from the
+  PROBE_DESIGN_DIR: ../../../../data/fig_5/HiPRFISH_probe_design_output
+
+### Added paths that were previously hardcoded
+output_dir: ../../../../outputs/fig_5/fig_5c/HiPRFISH # relative path of the directory you want to write to,
+figure_dir: ../../../../outputs/fig_5/fig_5c/figures
+
+fret_dir: ../../../../data/fig_5/HiPRFISH_fret_files
+hipr_ref_dir: ../../../../data/fig_5/HiPRFISH_reference_spectra
+
+## Script files
+snakefile_prep: Snakefile_prep
+
+## Inputs
+### This terminology is to adapt to the old hiprfish scripts
+images:
+    image_list_table: hipr_input_table.csv
+
+laser_regex: '_\d{3}.czi'
+
+### new terminology
+snakefilename: Snakefile
+probe_design_filename: DSGN0673_primerset_C_barcode_selection_MostSimple_full_length_probes.csv
+
+## Params
+ref_train_simulations: 2000
+
+## Filename formatting
+probe_design_id: DSGN0673
+reference_training:
+  script: hiprfish_imaging_train_reference.py
+  out_dir: reference_training
+
+prep:
+  script: hiprfish_imaging_file_prep.py
+  out_dir: prep
+  raw_fmt: '{sample_name}_las_{laser}.npy'
+  reg_fmt: '{sample_name}_registered.npy'
+  max_fmt: '{sample_name}_max.npy'

@@ -1,0 +1,84 @@
+# Configuration yaml
+# =============================================================================
+# Created By  : Ben Grodner
+# Created : 1/23/23
+# =============================================================================
+# Configuration file for 2022_12_19_hiprmegafish
+# These values get loaded into the snakemake and notebook as a dictionary in the variable 'config'
+# =============================================================================
+
+# =============================================================================
+# Input files
+# =============================================================================
+config_hipr: ../HiPRFISH/config_hipr.yaml  # in hipr_dir
+config_mega: ../MeGAFISH/config_mgefish.yaml  # in mega dir
+input_table: input_table_terml.csv
+
+# =============================================================================
+# Directories
+# =============================================================================
+pipeline_path: ../../..  # relative path to the segmentation  pipeline folder from workdir
+output_dir: ../../../../outputs/fig_5/2023_02_09_hiprmega/HiPR_MeGA
+hipr_dir: ../HiPRFISH
+mega_dir: ../MeGAFISH
+
+# =============================================================================
+# Params
+# =============================================================================
+max_shift: 100
+mega_reg_ch_index: 0  # which mega channel to use when registering with hiprfish image
+
+overlay_hipr_col:
+  im_inches: 4
+  marker: '.'
+  spot_col: [0,1.,0,1.]
+  marker_size: 40
+  linewidths: 1
+  ceil: 0.75
+  dpi: 2500
+overlay_mega:
+  raw_chan: 0
+  cmap: gray
+  clims: (0,0.1)
+  im_inches: 4
+  marker: '.'
+  spot_col: [0,1.,0,1.]
+  marker_size: 40
+  linewidths: 1
+  ceil: 0.75
+  dpi: 2500
+overlay_hipr_max:
+  cmap: gray
+  clims: (0,0.5)
+  im_inches: 4
+  marker: '.'
+  spot_col: [0,1.,0,1.]
+  marker_size: 40
+  linewidths: 1
+  ceil: 0.75
+  dpi: 2500
+
+assoc_radius: 5  # um
+n_assoc_simulations: 2000
+
+# =============================================================================
+# Ouptut files
+# =============================================================================
+hipr:
+  max_resize: registered/HiPRFISH/{sample_name}_hipr_max_resized.npy
+  seg_resize: registered/HiPRFISH/{sample_name}_hipr_seg_resized.npy
+  props_resize: registered/HiPRFISH/{sample_name}_hipr_props_resized.csv
+  seg_col_resize: registered/HiPRFISH/{sample_name}_hipr_seg_col_resized.npy
+mega:
+  shift_vectors: registered/MeGAFISH/{sample_name}_mega_shift_vectors.npy
+  raw_shift: registered/MeGAFISH/{sample_name}_mega_raw_shift.npy
+  cell_seg_shift: registered/MeGAFISH/{sample_name}_mega_chan_{cell_chan}_cell_seg_shift.npy
+  cell_props_shift: registered/MeGAFISH/{sample_name}_mega_chan_{cell_chan}_cell_props_shift.csv
+  spot_seg_shift: registered/MeGAFISH/{sample_name}_mega_chancell_{cell_chan}_chanspot_{spot_chan}_spot_seg_shift.npy
+  spot_props_shift: registered/MeGAFISH/{sample_name}_mega_chancell_{cell_chan}_chanspot_{spot_chan}_spot_props_shift.csv
+hipr_mega:
+  overlay_hipr_col_plot: overlay/{sample_name}_chancell_{cell_chan}_chanspot_{spot_chan}_overlay_hipr_col.png
+  overlay_hipr_max_plot: overlay/{sample_name}_chancell_{cell_chan}_chanspot_{spot_chan}_overlay_hipr_max.png
+  overlay_mega_plot: overlay/{sample_name}_chancell_{cell_chan}_chanspot_{spot_chan}_overlay_mega.png
+  dict_tax_count_sim: spot_tax_assoc/{sample_name}/{sample_name}_chancell_{cell_chan}_chanspot_{spot_chan}_tax_count_sim.yaml
+  tax_assoc_prob: spot_tax_assoc/{sample_name}/{sample_name}_chancell_{cell_chan}_chanspot_{spot_chan}_probability.yaml

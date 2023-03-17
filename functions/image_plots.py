@@ -83,7 +83,7 @@ def save_fig(filename, dpi=500):
 def _image_figure(dims, dpi=500):
     fig = plt.figure(figsize=(dims[0], dims[1]))
     ax = plt.Axes(fig, [0., 0., 1., 1.], )
-    ax.set_axis_off()
+    # ax.set_axis_off()
     fig.add_axes(ax)
     return(fig, ax)
 

@@ -34,3 +34,9 @@ Ran the nb_5c_segmentation.py notebook.
 ## Sister region assignment
 
 Notes in nb_5c_register_hiprmgefish.py.
+
+## Metagenome termL associations
+
+Notes in nb_terml_associations.py.
+
+First explored Butyrivibrio and Oribacterium and Fretibacterium in the metagenomic sequencing based on their spatial association with the termL MGEFISH stain.

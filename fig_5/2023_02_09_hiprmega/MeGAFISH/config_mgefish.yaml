@@ -1,0 +1,159 @@
+# Configuration yaml
+# =============================================================================
+# Created By  : Ben Grodner
+# Created : 9/20/22
+# =============================================================================
+# Configuration file for Fig 5b
+# These values get loaded into the snakemake as a dictionary in the variable 'config'
+# =============================================================================
+
+## Paths
+workdir: /fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_02_09_hiprmega/MeGAFISH
+input_dir: ../../../../data/fig_5/2023_02_09_hiprmega/MeGAFISH # Relative path to wherever your input images are from the
+                  # projecet workdir
+output_dir: ../../../../outputs/fig_5/2023_02_09_hiprmega/MeGAFISH # relative path of the directory you want to write to,
+                        # does not need to exist yet
+figure_dir: ../../../../outputs/fig_5/2023_02_09_hiprmega/MeGAFISH/figures
+### MGEFISH
+pipeline_path: ../../..
+                # relative path to the segmentation  pipeline folder from workdir
+functions_path: functions  # Path to function scripts relative to the pipeline path
+snakefile_convert: Snakefile_convert  # relative path to the snakefile
+snakefile_segment: Snakefile_segment  # relative path to the snakefile
+snakefile_multimax: Snakefile_multimax
+snakefile_spottocell: Snakefile_spottocell
+# ### HiPRFISH
+# hipr_scripts: ../../scripts/HiPRFISH
+# probe_design_dir: ../../../data/fig_5/HiPRFISH_probe_design_output
+# probe_design_filename: DSGN0673_primerset_C_barcode_selection_MostSimple_full_length_probes.csv
+# probe_design_id: DSGN0673
+# fret_dir: ../../../data/fig_5/HiPRFISH_fret_files
+# hipr_ref_dir: ../../../data/fig_5/HiPRFISH_reference_spectra
+
+
+## Inputs
+input_ext: _mode_airy_Airyscan_Processing_stitch.czi  # Extenstion for image files
+input_table_fn: input_table.csv  # path to table of input images
+input_regex: '*'
+input_table_cols: [sample_name]  # Add to if you want different params for
+                                  # different images, one colum must be "sample_name"
+conda_env: hiprfish_imaging_py38
+run_multimax_fn: run_multimax.sh  # Bash script to execute and document your run command
+run_spottocell_fn: run_spottocell.sh  # Bash script to execute and document your run command
+# conda_env_fn: ../envs/hiprfish_imaging_py38.yaml  # environment filename relative
+#                                                 # to the rules folder in the pipeline
+
+### HiPRFISH
+# hipr_input_table: HiPRFISH/hipr_input_table.csv
+
+## Params
+### MGEFISH
+seg_mem_gb: 200
+resource_mem_gb: 400
+
+resolution: 0.02995  # um per pixel
+
+cell_seg:
+  fn_mod: _cell_seg  # Used in filenaming to differenitate from spot segmentation
+  channels: [0]  # Indices of channels you want to follow these params
+  pre_log: False  # Pre-processing: take the log? used for high signal variance
+  pre_denoise: 0.005  # total variation denoising weight zero to turn off
+  pre_gauss: 0  # Gaussian filter? no if zero, otherwise value sets the sigma
+  diff_gauss: (3,10)  # Difference of gaussians edge enhancement?...set to (0,) if not
+  bg_filter: True  # Do we even want to subtract the background?
+  bg_log: False  # Take the log of the image in auto background subtraction
+  bg_smoothing: 5  # Pixels for gaussian blurring in auto background subtraction
+  n_clust_bg: 4  # Number of clusters to use in auto background subtraction
+  top_n_clust_bg: 3  # how many clusters to use as foreground in auto background subtraction
+  bg_threshold: 0  # Manual value of background subtraction threshold
+                  # overrides auto background subtraction
+  bg_file: 0
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
+  n_clust: 2  # Number of clusters to use in LNE foreground selection (only selects the highest intensity one)
+  small_objects: 50  # Remove segmented objects with pixel area smaller than this value
+  maxima: False  # Locate maxima in segmentaiton and get intensities there
+  window: 5
+
+
+spot_seg:
+  fn_mod: _spot_seg
+  channels: [1]
+  pre_log: False  # Pre-processing the segmentation image: take the log
+  pre_denoise: 0  # Use denoise non-local means?
+  pre_gauss: 0  # Gaussian filter? no if zero, otherwise value sets the sigma
+  diff_gauss: (0,)  # Difference of gaussians edge enhancement?...set to (0,) if not
+  bg_filter: True  # Do we even want to subtract the background?
+  bg_log: False  # Take the log of the image in auto background subtraction
+  bg_smoothing: 5  # Pixels for gaussian blurring in auto background subtraction
+  n_clust_bg: 5  # Number of clusters to use in auto background subtraction
+  top_n_clust_bg: 4  # how many clusters to use as foreground in auto background subtraction
+  bg_threshold: 0  # Manual value of background subtraction threshold
+                  # overrides auto background subtraction
+  bg_file: spot_mask_bg_debris_fmt
+                # Use a premade mask for the background, overrides other code
+              # Maker sure to have the "{sample}" and "{channel}"" wildcards in the string
+  n_clust: 2  # Number of clusters to use in LNE foreground selection
+  small_objects: 9  # Remove segmented objects with pixel area smaller than this value
+  maxima: False  # Locate maxima in segmentaiton and get intensities there
+  window: 5
+
+seg_process_dpi: 10000
+seg_process_ext: _process.pdf
+local_max_mindist: 3  # in pixels
+max_dist_to_cell: 100  # in pixels
+
+### HiPRFISH
+# ref_train_simulations: 2000
+
+
+
+## Filename formatting
+### MGEFISH
+raw_fmt: raw_npy/{sample_name}.npy
+# background_mask
+spot_mask_bg_rough_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg_rough.npy
+spot_mask_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg.npy
+spot_props_bg_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_props_bg.csv
+spot_mask_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_mask_bg_debris.npy
+spot_props_bg_debris_fmt: spot_mask/{sample_name}/{sample_name}_chan_{spot_chan}_spot_props_bg_debris.csv
+# Pipeline segmentaiton
+cell_seg_fmt: cell_seg/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg.npy
+spot_seg_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg.npy
+cell_props_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_props.csv
+spot_props_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props.csv
+# Area filtering
+cell_props_area_filt_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_props_area_filter.csv
+cell_seg_area_filt_fmt: cell_seg/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_area_filt.npy
+spot_props_area_filt_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_area_filt.csv
+spot_seg_area_filt_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_area_filt.npy
+# Multimax splitting
+spot_props_locmax_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_locmax.npy
+spot_props_locmax_props_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_locmax_props.csv
+spot_props_multimax_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_multimax.csv
+spot_seg_max_split_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_max_split.npy
+spot_props_max_split_fmt: spot_multimax/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_max_split.csv
+# SNR filtering
+spot_props_snr_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_snr.csv
+spot_props_snr_filt_fmt: spot_seg_props/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_props_snr_filt.csv
+spot_seg_snr_filt_fmt: spot_seg/{sample_name}/{sample_name}_chan_{spot_chan}_spot_seg_snr_filt.npy
+# Spot to cell id
+spot_cid_fmt: spot_cid/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_spot_seg_cid.csv
+spot_cid_demult_fmt: spot_cid/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_spot_cid_demult.csv
+spot_props_cid_fmt: spot_cid/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_spot_seg_props_cid.csv
+spot_seg_cid_filt_fmt: spot_cid/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_spot_seg_cid_filt.npy
+# Plots
+cell_props_spot_count_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_props_spot_count.csv
+cell_props_spot_count_outlier_filt_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_props_spot_count_outlier_filt.csv
+cell_seg_sc_outlier_filt_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_spot_count_outlier_filt.npy
+cell_seg_spot_count_fmt: cell_seg/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_cell_seg_spot_count.npy
+# Spatial stats
+weights_fmt: cell_seg_props/{sample_name}/{sample_name}_chan_{cell_chan}_cell_seg_weights.npy
+morans_i_fmt: cell_seg_props/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_morans_i.json
+join_counts_fmt: cell_seg_props/{sample_name}/{sample_name}_cellchan_{cell_chan}_spotchan_{spot_chan}_join_counts.json
+
+# ### HiPRFISH
+# hipr_out_dir: HiPRFISH
+# reference_training:
+#   script: hiprfish_imaging_train_reference.py
+#   out_dir: reference_training

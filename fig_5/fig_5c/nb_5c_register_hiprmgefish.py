@@ -1143,7 +1143,7 @@ cell_clims=(0,0.4)
 col_adj=[0.6,1,1,1]
 marker='.'
 spot_col= (1,1,1)
-marker_size=90
+marker_size=125
 linewidths=5
 ceil=0.01
 
@@ -1195,7 +1195,7 @@ ax.scatter(ref_pts_arr[:,1], ref_pts_arr[:,0],
 # Zoom into mge fov
 ax.set_xlim(shifts[1],mge_cell.shape[1] + shifts[1])
 ax.set_ylim(mge_cell.shape[0] + shifts[0], shifts[0])
-plt.sca(ax)
+plt.figure(fig)
 output_basename = hiprmge_outdir + '/' + hiprmge_sn + '_spot_host_association_radius_5_seg_tab20_taxa_enriched_spot_overlay'
 ip.save_png_pdf(output_basename)
 plt.figure(cbar)

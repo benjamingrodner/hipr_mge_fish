@@ -103,7 +103,7 @@ def save_png_pdf(basename, bbox_inches='tight', dpi=1000):
 def plot_threshold_curves(threshs, curves, xlims, dims=(5,2), lw=3,
                           ft=12):
     fig, ax = general_plot(col='k', dims=dims)
-    ax.plot(xlims, [1,1],'k',lw=lw*0.75)
+    # ax.plot(xlims, [1,1],'k',lw=lw*0.75)
     for c in curves:
         ax.plot(threshs, c, lw=lw)
     ax.set_xlim(xlims[0], xlims[1])

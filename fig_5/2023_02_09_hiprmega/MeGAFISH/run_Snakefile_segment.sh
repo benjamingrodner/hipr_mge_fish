@@ -1,0 +1,1 @@
+snakemake -s Snakefile_segment --configfile config_mgefish.yaml -j 11 --resources mem_gb=400 -p 

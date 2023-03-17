@@ -1,0 +1,130 @@
+# Snakefile
+# =============================================================================
+# Created By  : Ben Grodner
+# Created Date: 2023_01_21
+# =============================================================================
+"""
+This pipeline was written to combine the outputs of HiPRFISH processing and
+MeGAFISH processing
+"""
+# =============================================================================
+import os
+import sys
+import yaml
+import pandas as pd
+
+# =============================================================================
+# Functions
+# =============================================================================
+
+def get_input_table():
+    input_table = pd.read_csv(config['input_table'])
+    return input_table
+
+def expand_sn(string):
+    return [string.format(sample_name=sn) for sn in SAMPLE_NAMES]
+
+def expand_channels(string, channels):
+    # channels = config_mega[seg_type]['channels']
+    return [string.format(sample_name='{sample_name}', cell_chan=ch, spot_chan=ch)
+            for ch in channels]
+
+def expand_channels_and_sn(string, channels):
+    # channels = config_mega[seg_type]['channels']
+    return [string.format(sample_name=sn, cell_chan=ch, spot_chan=ch) for ch in channels
+            for sn in SAMPLE_NAMES]
+
+def expand_all_channels(string):
+    return [string.format(sample_name='{sample_name}', cell_chan=ch_c, spot_chan=ch_s)
+            for ch_s in ch_spot
+            for ch_c in ch_cell]
+
+def expand_all_channels_and_sn(string):
+    return [string.format(sample_name=sn, cell_chan=ch_c, spot_chan=ch_s)
+            for ch_s in ch_spot
+            for ch_c in ch_cell
+            for sn in SAMPLE_NAMES]
+# =============================================================================
+# Parameters
+# =============================================================================
+# Load the hipr and mega config_mega files
+args = sys.argv
+config_fn = args[args.index("--configfile") + 1]
+with open(config['config_hipr'], 'r') as f:
+    config_hipr = yaml.safe_load(f)
+with open(config['config_mega'], 'r') as f:
+    config_mega = yaml.safe_load(f)
+
+input_table = get_input_table()
+SAMPLE_NAMES = input_table['sample_name'].values
+ch_cell=config_mega['cell_seg']['channels']
+ch_spot=config_mega['spot_seg']['channels']
+
+# =============================================================================
+# Filenames
+# =============================================================================
+
+# Directories
+hipr_output_dir = config['hipr_dir'] + '/' + config_hipr['output_dir']
+mega_output_dir = config['mega_dir'] + '/' + config_mega['output_dir']
+
+# Expansions
+mega_cell_seg_fmts = expand_channels(
+        string=mega_output_dir + '/' + config_mega['cell_seg_area_filt_fmt'],
+        channels=config_mega['cell_seg']['channels']
+        )
+mega_spot_seg_fmts = expand_all_channels(
+        string=mega_output_dir + '/' + config_mega['spot_seg_cid_filt_fmt']
+        )
+mega_cell_seg_shift_fmts = expand_channels(
+        string=config['output_dir'] + '/' + config['mega']['cell_seg_shift'],
+        channels=config_mega['cell_seg']['channels']
+        )
+mega_spot_seg_shift_fmts = expand_all_channels(
+        string=config['output_dir'] + '/' + config['mega']['spot_seg_shift']
+        )
+mega_cell_props_shift_fmts = expand_channels(
+        string=config['output_dir'] + '/' + config['mega']['cell_props_shift'],
+        channels=config_mega['cell_seg']['channels']
+        )
+mega_spot_props_shift_fmts = expand_all_channels(
+        string=config['output_dir'] + '/' + config['mega']['spot_props_shift']
+        )
+overlay_hipr_col_fmts = expand_all_channels(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_hipr_col_plot']
+        )
+overlay_hipr_max_fmts = expand_all_channels(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_hipr_max_plot']
+        )
+overlay_mega_fmts = expand_all_channels(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_mega_plot']
+        )
+
+# Rule all
+mega_spot_seg_shift_fns = expand_channels_and_sn(
+        string=config['output_dir'] + '/' + config['mega']['cell_seg_shift'],
+        channels=config_mega['cell_seg']['channels']
+        )
+overlay_hipr_col_fns = expand_all_channels_and_sn(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_hipr_col_plot']
+        )
+overlay_hipr_max_fns = expand_all_channels_and_sn(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_hipr_max_plot']
+        )
+overlay_mega_fns = expand_all_channels_and_sn(
+        string=config['output_dir'] + '/' + config['hipr_mega']['overlay_mega_plot']
+        )
+# =============================================================================
+# Snake rules
+# =============================================================================
+
+rule all:
+    input:
+        overlay_hipr_col_fns,
+        overlay_hipr_max_fns,
+        overlay_mega_fns
+
+include: config['pipeline_path'] + '/rules/register_hipr_mega.smk'
+include: config['pipeline_path'] + '/rules/plot_hipr_col_overlay.smk'
+include: config['pipeline_path'] + '/rules/plot_hipr_max_overlay.smk'
+include: config['pipeline_path'] + '/rules/plot_mega_overlay.smk'

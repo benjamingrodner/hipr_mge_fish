@@ -1,0 +1,1 @@
+snakemake -s Snakefile_segment --configfile config_hipr.yaml -j 20 --resources mem_gb=120 -p 
