@@ -346,3 +346,23 @@ def expand_all_channels(string, sample_names, config):
             for ch_s in ch_spot
             for ch_c in ch_cell
             for sn in sample_names]
+
+
+def re_segment_with_classif(seg, classification, bboxes, labels):
+    shape = classification.shape
+    seg_alt = np.zeros(shape)
+    for i, (bbox, label) in enumerate(zip(bboxes, labels)):
+        if isinstance(bbox, str):
+            bbox = eval(bbox)
+        box_seg_bool = seg[bbox[0]:bbox[2],bbox[1]:bbox[3]] == label
+        box_cl = classification[bbox[0]:bbox[2],bbox[1]:bbox[3]]
+        for bc in np.unique(box_cl):
+            box_cl_bc = box_cl == bc
+            box_alt_bool = (box_cl_bc * box_seg_bool)*1.
+            lab = float(np.max(seg_alt) + 1)
+            box_alt_lab = box_alt_bool * lab
+            box_im_alt = seg_alt[bbox[0]:bbox[2],bbox[1]:bbox[3]]
+            box_alt = box_im_alt + box_alt_lab
+            seg_alt[bbox[0]:bbox[2],bbox[1]:bbox[3]] = box_alt
+    seg_alt = seg_alt.astype(np.int64)
+    return seg_alt

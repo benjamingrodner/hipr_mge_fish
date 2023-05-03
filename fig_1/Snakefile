@@ -1,0 +1,260 @@
+#################################################################################
+# Packages
+#################################################################################
+
+import glob
+import re
+import numpy as np
+
+#################################################################################
+# Functions
+#################################################################################
+
+def get_sample_names(data_dir='../data/images', sample_glob='*', ext='.czi'):
+    filename_glob = '{}/{}{}'.format(data_dir, sample_glob, ext)
+    filenames = glob.glob(filename_glob)
+    sample_filenames = list(set([re.sub(ext, '', f) for f in filenames]))
+    return [re.sub(data_dir + '/', '', s) for s in sample_filenames]
+
+#################################################################################
+# Parameters
+#################################################################################
+# Segment
+cluster_path = '/fs/cbsuvlaminck2'
+raw_ext = '.czi'
+data_dir = cluster_path + '/workdir/bmg224/data/2021/brc_fileshare_new/2021_06_02_plasmidairyscan/processed'
+out_dir = '../image_processing'
+sample_glob = '*'
+SAMPLES = get_sample_names(data_dir=data_dir, sample_glob=sample_glob, ext=raw_ext)
+reflectors = ['gfp', 'cy5']
+factors = ['method', 'plasmid', 'fov']
+channel_cell = 'gfp'
+channel_spot = 'cy5'
+seg_fname_mod_cell = '_cell_seg'
+seg_fname_mod_spot = '_spot_seg'
+plot_fname_mod_spot = '_spot_raw'
+plot_fname_mod_cell = '_cell_raw'
+cell_lne_smoothing = 10
+spot_n_clusters = 3
+spot_top_n_clusters = 2
+flat_field_filename = "''"
+flat_field_index = 0
+seg_ext = '.npy'
+# Save pngs
+clims_spot = [0.0, 0.05]
+clims_cell = ['min','max']
+# Assign spots to cell id
+spot_cell_id_ext = '_cell_id.csv'
+# Filter Spots
+functions_path = cluster_path + '/workdir/bmg224/hiprfish/image_analysis_code'
+props_filter_ext = '_props_filtered.csv'
+filter_stats_ext = '_filter_stats.csv'
+intensity_threshold = 0.04
+# intensity_threshold = 0.15
+dist_thresh = 10
+area_thresh = 200
+filter_steps_figure_exts = ['_filter_steps.png','_filter_steps.pdf']
+dims_filter_figure = [2.5, 0.5]
+spot_channel_index = 1
+
+#################################################################################
+# Rules
+#################################################################################
+
+rule all:
+    input:
+#         spot_segs = [out_dir + '/{}'.format(sample) + seg_fname_mod_spot + '.npy'
+#                      for sample in SAMPLES],
+#         cell_segs = [out_dir + '/{}'.format(sample) + seg_fname_mod_cell + '.npy'
+#                      for sample in SAMPLES],
+#         cell_props = [out_dir + '/{}'.format(sample) + seg_fname_mod_cell + '_props.csv' 
+#                       for sample in SAMPLES],
+#         spot_props = [out_dir + '/{}'.format(sample) + seg_fname_mod_spot + '_props.csv' 
+#                       for sample in SAMPLES],
+#         cell_seg_spot_raw = [out_dir + '/{}'.format(sample) 
+#                              + seg_fname_mod_cell + plot_fname_mod_spot + '.png' 
+#                              for sample in SAMPLES],
+#         cell_seg_plot = [out_dir + '/{}'.format(sample) + seg_fname_mod_cell + '.png'
+#                     for sample in SAMPLES],
+#         spot_seg_plot = [out_dir + '/{}'.format(sample) + seg_fname_mod_spot + '.png'
+#                          for sample in SAMPLES],
+#         spot_seg_cell_raw = [out_dir + '/{}'.format(sample) 
+#                              + seg_fname_mod_spot + plot_fname_mod_cell + '.png'
+#                              for sample in SAMPLES],
+        spot_props_cell_id = [out_dir + '/{}'.format(sample) + 
+                              seg_fname_mod_spot + '_cell_id.csv'
+                              for sample in SAMPLES],
+#         spot_props_filtered = [out_dir + '/' + sample + 
+#                                seg_fname_mod_spot + props_filter_ext
+#                                for sample in SAMPLES]
+#         spot_props_filtered = [out_dir + '/' + '2021_04_19_phagetimeseries_moi_000_time_010_fov_1' + 
+#                                seg_fname_mod_spot + props_filter_ext,
+#                                out_dir + '/' + '2021_04_19_phagetimeseries_moi_100_time_010_fov_1' + 
+#                                seg_fname_mod_spot + props_filter_ext]
+
+
+
+rule segment_cells:
+    input:
+        data_dir + '/{sample}' + raw_ext
+    output:
+        seg = out_dir + '/{sample}' + seg_fname_mod_cell + '.npy',
+#         props = out_dir + '/{sample}' + seg_fname_mod_cell + '_props.csv'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_cell,
+        seg_filename_mod = seg_fname_mod_cell,
+        lne_smoothing = cell_lne_smoothing,
+        lne_log = 0,
+        bg_log = 0
+    shell:
+        "python segment_images.py {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} "
+        "-sfm {params.seg_filename_mod} -lsm {params.lne_smoothing} " 
+        "-bgl {params.bg_log} -lnel {params.lne_log}"
+        
+rule plot_cell_seg_spot_raw:
+    input:
+        seg = out_dir + '/{sample}' + seg_fname_mod_cell + '.npy'
+    output:
+        seg_plot = out_dir + '/{sample}' + seg_fname_mod_cell + plot_fname_mod_spot + '.png'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_cell,
+        seg_plot_raw_channel = channel_spot,
+        clims = clims_spot,
+        seg_filename_mod = seg_fname_mod_cell,
+        plot_filename_mod = plot_fname_mod_spot,
+        flat_field_filename = flat_field_filename,
+        flat_field_index = flat_field_index
+    shell:
+        "python plot_seg.py  {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} -sprch {params.seg_plot_raw_channel} "
+        "-clims {params.clims} "
+        "-sfm {params.seg_filename_mod} -pfm {params.plot_filename_mod} "
+        "-fff {params.flat_field_filename} -ffi {params.flat_field_index}"
+
+rule plot_cell_seg:
+    input:
+        seg = out_dir + '/{sample}' + seg_fname_mod_cell + '.npy'
+    output:
+        seg_plot = out_dir + '/{sample}' + seg_fname_mod_cell + '.png'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_cell,
+        clims = clims_cell,
+        seg_filename_mod = seg_fname_mod_cell
+    shell:
+        "python plot_seg.py  {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} "
+        "-clims {params.clims} "
+        "-sfm {params.seg_filename_mod}"
+
+rule segment_spots:
+    input:
+        data_dir + '/{sample}' + raw_ext
+    output:
+        seg = out_dir + '/{sample}' + seg_fname_mod_spot + '.npy',
+#         props = out_dir + '/{sample}' + seg_fname_mod_spot + '_props.csv'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_spot,
+        seg_filename_mod = seg_fname_mod_spot,
+        flat_field_filename = flat_field_filename,
+        flat_field_index = flat_field_index,
+        bg_log = 1,
+        bg_filter = 0, # Removes background filter, all lne spots retained
+        n_clusters = spot_n_clusters,
+        top_n_clusters = spot_top_n_clusters,
+        lne_watershed_mask = 1
+    shell:
+        "python segment_images.py {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} -bgf {params.bg_filter} "
+        "-sfm {params.seg_filename_mod} -bgl {params.bg_log} "
+        "-ncl {params.n_clusters} -tpn {params.top_n_clusters} "
+        "-fff {params.flat_field_filename} -ffi {params.flat_field_index} "
+        "-lwm {params.lne_watershed_mask}"
+
+rule plot_spot_seg:
+    input:
+        seg = out_dir + '/{sample}' + seg_fname_mod_spot + '.npy'
+    output:
+        seg_plot = out_dir + '/{sample}' + seg_fname_mod_spot + '.png'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_spot,
+        clims = clims_spot,
+        seg_filename_mod = seg_fname_mod_spot,
+        flat_field_filename = flat_field_filename,
+        flat_field_index = flat_field_index
+    shell:
+        "python plot_seg.py  {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} "
+        "-clims {params.clims} "
+        "-sfm {params.seg_filename_mod} "
+        "-fff {params.flat_field_filename} -ffi {params.flat_field_index}"
+        
+rule plot_spot_seg_cell_raw:
+    input:
+        seg = out_dir + '/{sample}' + seg_fname_mod_spot + '.npy'
+    output:
+        seg_plot = out_dir + '/{sample}' + seg_fname_mod_spot + plot_fname_mod_cell + '.png'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        ext = raw_ext,
+        channel = channel_spot,
+        seg_plot_raw_channel = channel_cell,
+        clims = clims_cell,
+        seg_filename_mod = seg_fname_mod_spot,
+        plot_filename_mod = plot_fname_mod_cell
+    shell:
+        "python plot_seg.py  {params.sample} "
+        "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+        "-ch {params.channel} -sprch {params.seg_plot_raw_channel} "
+        "-clims {params.clims} "
+        "-sfm {params.seg_filename_mod} -pfm {params.plot_filename_mod}"
+        
+rule spots_to_cell_id:
+    input:
+        seg = out_dir + '/{sample}' + seg_fname_mod_cell + '.npy',
+#         props = out_dir + '/{sample}' + seg_fname_mod_spot + '_props.csv'
+    output:
+        spot_props_cell_id = out_dir + '/{sample}' + seg_fname_mod_spot + '_cell_id.csv'
+    params:
+        sample = "{sample}",
+        illumination_names = reflectors,
+        data_dir = data_dir,
+        out_dir = out_dir,
+        ext = raw_ext,
+        seg_filename_mod_cell = seg_fname_mod_cell,
+        seg_filename_mod_spot = seg_fname_mod_spot
+    shell:
+        "python spots_to_cell_id.py  {params.sample}"
+#         "-ilnm {params.illumination_names} -dd {params.data_dir}  -ext {params.ext} "
+#         "-od {params.out_dir} "
+#         "-sfmc {params.seg_filename_mod_cell} -sfms {params.seg_filename_mod_spot}"
+        
+include: 'rules/filter_spots.smk'
+       
