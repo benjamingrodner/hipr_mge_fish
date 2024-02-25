@@ -69,8 +69,8 @@ def subplot_square_images(im_list, subplot_dims, im_inches=5, cmaps=(), clims=()
                     image=plt.imshow(im, cmap=cmp)
                 plt.gca().set_visible(False)
                 cbar = plt.colorbar(image,orientation="horizontal")
-        cbars.append(cbar)
-    return(fig, ax, cbars)
+        cbars.append(fig2)
+    return(fig, fig.axes, cbars)
 
 
 def seg2rgb(seg):
@@ -89,8 +89,9 @@ def _image_figure(dims, dpi=500):
 
 
 def plot_image(
-            im, im_inches=5, cmap=(), clims=('min','max'), zoom_coords=(), scalebar_resolution=0,
-            axes_off=True, discrete=False, cbar_ori='horizontal', dpi=500
+            im, im_inches=5, cmap='inferno', clims=('min','max'), zoom_coords=(), scalebar_resolution=0,
+            axes_off=True, discrete=False, cbar_ori='horizontal', dpi=500,
+            norm=None
         ):
     s = im.shape
     dims = (im_inches*s[1]/np.max(s), im_inches*s[0]/np.max(s))
@@ -99,10 +100,10 @@ def plot_image(
     llim = np.min(im_) if clims[0]=='min' else clims[0]
     ulim = np.max(im_) if clims[1]=='max' else clims[1]
     clims = (llim, ulim)
-    if cmap:
-        ax.imshow(im, cmap=cmap, clim=clims, interpolation="none")
-    else:
+    if len(s) > 2:
         ax.imshow(im, interpolation="none")
+    else:
+        ax.imshow(im, cmap=cmap, clim=clims, interpolation="none", norm=norm)
     zc = zoom_coords if zoom_coords else (0,im.shape[0],0,im.shape[1])
     ax.set_ylim(zc[1],zc[0])
     ax.set_xlim(zc[2],zc[3])
@@ -116,7 +117,7 @@ def plot_image(
         plt.gca().add_artist(scalebar)
     cbar = []
     fig2 = []
-    if cmap:
+    if len(s) == 2:
         if cbar_ori == 'horizontal':
             fig2 = plt.figure(figsize=(dims[0], dims[0]/10))
         elif cbar_ori == 'vertical':
@@ -127,10 +128,10 @@ def plot_image(
             vals = vals[(vals>=clims[0]) & (vals<=clims[1])]
             cbar = get_discrete_colorbar(vals, cmap)
         else:
-            image=plt.imshow(im, cmap=cmap, clim=clims)
+            image=plt.imshow(im, cmap=cmap, clim=clims, norm=norm)
             plt.gca().set_visible(False)
             cbar = plt.colorbar(image,orientation=cbar_ori)
-    return(fig, ax, fig2)
+    return(fig, ax, [fig2, cbar])
 
 
 def plot_seg_outline(ax, seg, col=(0,1,0)):
@@ -224,7 +225,7 @@ def filter_seg_objects(seg, props, filter):
     seg_new = seg.copy()
     remove_cids = props.loc[props[filter] == 0, ['label','bbox']].values
     for i, (c, b) in enumerate(remove_cids):
-        b = eval(b)
+        b = eval(b) if isinstance(b, str) else b
         b_sub = seg_new[b[0]:b[2],b[1]:b[3]]
         b_sub = b_sub * (b_sub != c)
         seg_new[b[0]:b[2],b[1]:b[3]] = b_sub
@@ -370,4 +371,63 @@ def highlight_taxa(ax, hipr_bc, highlighted_barcodes, cols):
                 extent=extent,
                 interpolation='none'
                 )
+    return ax
+
+
+def convert_y_to_log_scale(ax, lims, ft, ylabel):
+    llim, ulim = lims
+    ax.set_ylim(llim,ulim)
+    ticks = [llim, (llim + (ulim - llim)/2), ulim]
+    yticklabels = ['{}'.format(np.round(tick, 1)) for tick in ticks]
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(yticklabels, size = int(ft*3//4))
+    ax.set_ylabel(ylabel + ' ($log_{10}$)')
+    return(ax)
+
+
+def adjust_ylims(ax, lims=('min','max'), values=[], log_scale=False, ft=12, ylabel='', int_ticks=False):
+    v = np.concatenate(values) if len(values) > 0 else values
+    llim = np.min(v) if lims[0]=='min' else float(lims[0])
+    ulim = np.max(v) if lims[1]=='max' else float(lims[1])
+    newlims = (llim, ulim)
+    if log_scale:
+        convert_y_to_log_scale(ax, lims=newlims, ft=ft, ylabel=ylabel)
+    else:
+        ax.set_ylim(llim, ulim)
+        if int_ticks:
+            ax.set_yticks(range(int(llim), int(np.ceil(ulim))))
+    return ax
+
+
+def hex_to_rgb(hex):
+    h = hex.lstrip('#')
+    return tuple(int(h[i:i+2], 16)/255 for i in (0, 2, 4))
+
+
+def violin_dot_plot(ax, values, positions,
+                    jit=0.1, y_jit=0, ft=12, dot_factor=0.5, transparency=0.7, col='k', bw='scott',
+                    colors=[], lw=1, widths=[], scat=True, means=True, alpha=0):
+    widths = widths if widths else jit*4
+    for v, p in zip(values, positions):
+        jitter_x = np.random.normal(scale=jit, size=len(v)) # TODO Adjust jit scale with number of spots
+        x_list = np.repeat(p, len(v)) + jitter_x
+        jitter_y = np.random.normal(scale=y_jit, size=len(v)) if y_jit else 0
+        y_list = np.array(v) + jitter_y
+        ymean = np.mean(v)
+        if scat:
+            ax.scatter(x_list, y_list, s=ft*dot_factor, marker='.', edgecolors='none', alpha=transparency,
+                       c=col)
+        if means:
+            ax.hlines(ymean, p - jit*2, p + jit*2, colors='red', linewidth=lw)
+    parts = ax.violinplot(values, positions=positions, widths=widths,
+                          showmeans=False, showmedians=False,
+                          showextrema=False, bw_method=bw)
+    colors = colors if colors else [(0.1216, 0.4667, 0.7059)]*len(values)
+    colors = [hex_to_rgb(c) if len(c) == 7 else c for c in colors]
+    for pc, col_ in zip(parts['bodies'], colors):
+        fcol = col_ + (alpha,)
+        pc.set(alpha=None, facecolor=fcol, edgecolor=col_, linewidth=lw)
+    ax.set_xticklabels([])
+    ax.tick_params(labelbottom=False, bottom=False, direction='in', labelsize=ft,
+                   color=col, labelcolor=col, length=lw*2)
     return ax

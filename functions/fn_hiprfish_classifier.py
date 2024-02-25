@@ -70,6 +70,47 @@ def plot_umap(embedding, labels, dims=(5,5), marker='o', alpha=0.5,
         ax.set_ylim(ylims[0], ylims[1])
     return fig, ax, col_df
 
+
+@numba.njit()
+def channel_cosine_intensity_488_v2(x, y):
+    result = 0.0
+    norm_x = 0.0
+    norm_y = 0.0
+    cos_weight_1 = 1.0
+    for i in range(0,23):
+        result += x[i] * y[i]
+        norm_x += x[i] ** 2
+        norm_y += y[i] ** 2
+    if norm_x == 0.0 and norm_y == 0.0:
+        cos_dist_1 = 0.0
+    elif norm_x == 0.0 or norm_y == 0.0:
+        cos_dist_1 = 1.0
+    else:
+        cos_dist_1 = 1.0 - (result / np.sqrt(norm_x * norm_y))
+    return 0.5*cos_dist_1
+
+
+
+@numba.njit()
+def channel_cosine_intensity_allonev2(x, y):
+    result = 0.0
+    norm_x = 0.0
+    norm_y = 0.0
+    cos_weight_1 = 1.0
+    for i in range(len(x)):
+        result += x[i] * y[i]
+        norm_x += x[i] ** 2
+        norm_y += y[i] ** 2
+    if norm_x == 0.0 and norm_y == 0.0:
+        cos_dist_1 = 0.0
+    elif norm_x == 0.0 or norm_y == 0.0:
+        cos_dist_1 = 1.0
+    else:
+        cos_dist_1 = 1.0 - (result / np.sqrt(norm_x * norm_y))
+    return 0.5*cos_dist_1
+
+
+
 @numba.njit()
 def channel_cosine_intensity_5b_v2(x, y):
     check = np.sum(np.abs(x[57:60] - y[57:60]))
@@ -115,7 +156,7 @@ def channel_cosine_intensity_5b_v2(x, y):
         norm_y = 0.0
         if x[59] == 0:
             cos_weight_3 = 0.0
-            cos_dist = 0.0
+            cos_dist_3 = 0.0
         else:
             cos_weight_3 = 1.0
             for i in range(43,57):
@@ -123,11 +164,11 @@ def channel_cosine_intensity_5b_v2(x, y):
                 norm_x += x[i] ** 2
                 norm_y += y[i] ** 2
             if norm_x == 0.0 and norm_y == 0.0:
-                cos_dist = 0.0
+                cos_dist_3 = 0.0
             elif norm_x == 0.0 or norm_y == 0.0:
-                cos_dist = 1.0
+                cos_dist_3 = 1.0
             else:
-                cos_dist = 1.0 - (result / np.sqrt(norm_x * norm_y))
+                cos_dist_3 = 1.0 - (result / np.sqrt(norm_x * norm_y))
         result = 0.0
         norm_x = 0.0
         norm_y = 0.0
@@ -146,7 +187,8 @@ def channel_cosine_intensity_5b_v2(x, y):
     #             cos_dist_4 = 1.0
     #         else:
     #             cos_dist_4 = 1.0 - (result / np.sqrt(norm_x * norm_y))
-    #     cos_dist = 0.5*(cos_dist_1 + cos_dist_2 + cos_dist_3 + cos_dist_4)/4
+        cos_dist = 0.5*(cos_dist_1 + cos_dist_2 + cos_dist_3)/3
+        # cos_dist = 0.5*(cos_dist_1 + cos_dist_2 + cos_dist_3 + cos_dist_4)/4
     else:
         cos_dist = 1
     return(cos_dist)
@@ -280,6 +322,40 @@ def get_7b_params():
             }
 
 
+def get_5b_params():
+    '''
+    Parameters for hiprfish barcodes using Merfish R1, R2, R3, R8, R10
+    With lasers 488, 514, 561
+    '''
+    excitation_matrix = np.array([[1, 1, 1, 1, 1],
+                                  [1, 1, 1, 1, 1],
+                                  [0, 1, 1, 1, 0]])
+    error_scale = {
+            'special':[False,[]],
+            'standard':[0.1, 0.25, 0.35]
+            }
+    molar_extinction_coefficient = [
+            73000, 112000, 270000, 50000, 81000
+            ]
+    fluorescence_quantum_yield = [0.92, 0.79, 0.33, 1, 0.61]
+    rough_classifier_matrix =   [[1,1,0,0,1],
+                                 [1,1,1,1,1],
+                                 [0,0,1,1,0]]
+    return {
+            'nbit': 5,
+            'n_las': 3,
+            'barcode_list': [512, 128, 4, 2, 1],
+            'merfish_fluors': [10,8,3,2,1],
+            'channel_indices': [0,23,43,57],
+            'ref_spec_indices': [32,89],
+            'excitation_matrix': excitation_matrix,
+            'error_scale': error_scale,
+            'molar_extinction_coefficient': molar_extinction_coefficient,
+            'fluorescence_quantum_yield': fluorescence_quantum_yield,
+            'rough_classifier_matrix': rough_classifier_matrix
+            }
+
+
 # =============================================================================
 # ## Classes
 # =============================================================================
@@ -295,7 +371,13 @@ class Training_Data:
     params: hardcoded parameters for a given number of bits and lasers
             (functions for extracting these parameters are defined above)
     '''
-    def __init__(self, config, params):
+    def __init__(self, config, version='7bit'):
+        if version == '7bit':
+            params = get_7b_params()
+        elif version == '5bit':
+            params = get_5b_params()
+        else:
+            raise ValueError('Version not supported. Current versions: "7bit","5bit"')
         self.spc = config['ref_train_simulations']
         self.nbit = params['nbit']
         self.probe_design_filename = (
@@ -342,8 +424,9 @@ class Training_Data:
 
     def _add_error_to_spectra(self, numeric_code_list, simulated_spectra_norm, pos=True):
         simulated_spectra_err = np.zeros(simulated_spectra_norm.shape)
-        if numeric_code_list[self.es_dict['special'][0]] == 1:
-            error_scale = self.es_dict['special'][1]
+        if self.es_dict['special'][0]:
+            if numeric_code_list[self.es_dict['special'][0]] == 1:
+                error_scale = self.es_dict['special'][1]
         else:
             error_scale = self.es_dict['standard']
         for k in range(0,self.n_las):
@@ -466,12 +549,14 @@ class Training_Data:
         # Which barcodes are in the probe design
         probes = pd.read_csv(self.probe_design_filename, dtype={self.code_col: str})
         code_set = np.unique(probes[self.code_col].values)
+        code_set = [c.zfill(self.nbit) for c in code_set]
         # Construct table
         ncols = self.n_chan + self.n_las + 1
         training_data = np.empty([0, ncols])
         training_data_negative = np.empty([0, ncols])
         for enc in range(1, 2**self.nbit): # Iterate over all possible barcodes
-            code = re.sub('0b', '', format(enc, '#0' + str(self.nbit+2) + 'b'))
+            code = format(enc, '0' + str(self.nbit) + 'b')
+            # code = re.sub('0b', '', format(enc, '#0' + str(self.nbit+2) + 'b'))
             if code in code_set:  # Limit to only those barcodes in the probe design
                 numeric_code_list = np.array([int(a) for a in list(code)])
 

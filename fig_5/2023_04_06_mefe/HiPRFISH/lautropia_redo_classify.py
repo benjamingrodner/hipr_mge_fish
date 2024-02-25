@@ -39,7 +39,8 @@ import numba as nb
 
 # %% codecell
 # Absolute path
-project_workdir = '/workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_04_06_mefe/HiPRFISH'
+cluster_dir = ''
+project_workdir = cluster_dir + '/workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_04_06_mefe/HiPRFISH'
 
 os.chdir(project_workdir)
 os.getcwd()  # Make sure you're in the right directory
@@ -111,6 +112,7 @@ raw_regex = data_dir + '/' + sn + config_hipr['laser_regex']
 # raws = [np.load(fn) for fn in raw_fns]
 raw_fns = sorted(glob.glob(raw_regex))
 print(raw_fns)
+
 
 # %% codecell
 # Load with bioformats
@@ -284,9 +286,11 @@ hipr_max_resize = resize_hipr(
 # Get mega cell image
 # config_hipr = config
 
+sn_old = '2023_04_06_mefe_pool_full_slide_1_fov_07'
+
 mega_out_dir = mega_dir + '/' + config_mega['output_dir']
 
-mega_raw_fn = mega_out_dir + '/' + config_mega['raw_fmt'].format(sample_name=sn)
+mega_raw_fn = mega_out_dir + '/' + config_mega['raw_fmt'].format(sample_name=sn_old)
 mega_raw = np.load(mega_raw_fn)
 reg_ch = config['mega_reg_ch_index']
 mega_cell = mega_raw[:,:,config_mega['cell_seg']['channels'][reg_ch]]
@@ -326,7 +330,7 @@ print(shift_vectors)
 s_ch = 1
 c_ch = 0
 # mega_cs_fn = mega_out_dir + '/' + config_mega['cell_seg_area_filt_fmt'].format(sample_name=sn,cell_chan=c_ch)
-mega_ss_fn = mega_out_dir + '/' + config_mega['spot_mask_bg_ecc_fmt'].format(sample_name=sn, spot_chan=s_ch)
+mega_ss_fn = mega_out_dir + '/' + config_mega['spot_mask_bg_ecc_fmt'].format(sample_name=sn_old, spot_chan=s_ch)
 # mega_cs = np.load(mega_cs_fn)
 mega_ss = np.load(mega_ss_fn)
 
@@ -371,6 +375,14 @@ hipr_maz_resize = resize_hipr(
         )
 hipr_rgb_resize = resize_hipr(
         rgb, hipr_res, mega_res, dims=dims, ul_corner=ul_corner
+        )
+
+hipr_stack_resize = resize_hipr(
+        stack, hipr_res, mega_res, dims=dims, ul_corner=ul_corner
+        )
+
+hipr_stacksmooth_resize = resize_hipr(
+        stack_smooth, hipr_res, mega_res, dims=dims, ul_corner=ul_corner
         )
 
 # %% codecell
@@ -1799,7 +1811,7 @@ ax.scatter(ref_pts_arr[:,1], ref_pts_arr[:,0],
 # show raw spot on top of classif zoom
 ul = 0.25
 ll = 0.125
-c=[2000,2500]
+c=[1500,2500]
 d=[750,750]
 im_inches = 20
 # zoom_coords=[c[0], c[0]+d[0], c[1], c[1]+d[1]]
@@ -1823,7 +1835,7 @@ ax.imshow(sro_zoom)
 out_dir = config['output_dir'] + '/pixel_classif_test'
 if not os.path.exists(out_dir): os.makedirs(out_dir)
 out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay_zoom'
-# ip.save_png_pdf(out_bn)
+# ip.save_png_pdf(out_bn, bbox_inches=False)
 
 # %% codecell
 # save raw spot on top of classif
@@ -2435,7 +2447,7 @@ print(str(h_um) + ' micrometers')
 out_dir = config['output_dir'] + '/spatial_assoc'
 if not os.path.exists(out_dir): os.makedirs(out_dir)
 out_bn = out_dir + '/' + sn + '_spot_association_frac_cells_dist_1um'
-ip.save_png_pdf(out_bn)
+# ip.save_png_pdf(out_bn)
 
 
 
@@ -2447,6 +2459,8 @@ ip.save_png_pdf(out_bn)
 
 # %% codecell
 # Do nearest neighbor spots to cells
+n_neighbors=2
+
 dict_cell_nbrs = {}
 for bc in barcodes_int_order:
     reseg_coords = dict_cell_coords[bc]
@@ -2493,24 +2507,41 @@ sim_arr.shape
 
 # %% codecell
 # Plot simulation array vs sample
-dims=(5,3)
+# dims=(5,3)
+dims=[1.,0.75]
 sim_lw=0.5
 sim_col = 'k'
 sim_alpha=0.1
-sample_color='r'
+# sample_color='r'
 sample_lw=2
+save_list = ['Veillonella','Leptotrichia','Fusobacterium']
+ft = 6
 
 hs_um = hs*config_mega['resolution']
 len(spot_coords)
 for i, bc in enumerate(barcodes_int_order):
-    fig, ax = ip.general_plot(dims=dims)
-    sim_bc = sim_arr[:,i,:]
-    for h in sim_bc:
-        ax.plot(hs_um, h, lw=sim_lw, alpha=sim_alpha, color=sim_col)
-    ax.plot(hs_um, dict_h[bc], lw=sample_lw, color=sample_color)
-    print(dict_bc_sciname[bc])
+    sci_name = dict_bc_sciname[bc]
+    if sci_name in save_list:
+        color = col_dict[sci_name]
+        fig, ax = ip.general_plot(dims=dims, ft=ft)
+        sim_bc = sim_arr[:,i,:]
+        for h in sim_bc:
+            ax.plot(hs_um, h, lw=sim_lw, alpha=sim_alpha, color=sim_col)
+        ax.plot(hs_um, dict_h[bc], lw=sample_lw, color=color)
+        # ax.plot(hs_um, dict_h[bc], lw=sample_lw, color=sample_color)
+        # if not i == 3:
+        ax.set_xticks(ticks=[0,2,4,6,8], labels=[])
+        ax.set_yticks(ticks=[0,50,100,150], labels=[])
+        print(dict_bc_sciname[bc])
+        out_dir = config['output_dir'] + '/spatial_assoc'
+        if not os.path.exists(out_dir): os.makedirs(out_dir)
+        out_bn = out_dir + '/' + sn + '_cell_association_lag_plot_' + sci_name
+        # ip.save_png_pdf(out_bn)
+        print('saved')
+
     plt.show()
     plt.close()
+
 
 # %% codecell
 # Plot as boxplot for a given h
@@ -2618,7 +2649,447 @@ print(str(hs_um[h]) + ' micrometers')
 out_dir = config['output_dir'] + '/spatial_assoc'
 if not os.path.exists(out_dir): os.makedirs(out_dir)
 out_bn = out_dir + '/' + sn + '_cell_association_frac_spots_dist_2_5um'
-ip.save_png_pdf(out_bn)
+# ip.save_png_pdf(out_bn)
+
+
+# ==============================================================================
+# ## nearest neighbor histograms
+# ==============================================================================
+
+# %% codecell
+# For each taxon
+n_neighbors=1
+
+dict_cell_nbrs = {}
+for bc in barcodes_int_order:
+    reseg_coords = dict_cell_coords[bc]
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors).fit(reseg_coords)
+    dists, _ = nbrs.kneighbors(spot_coords)
+    dict_bc_dists[bc] = dists
+
+# %% codecell
+dims=(3,3)
+ft=12
+line_col='k'
+lw=3
+alpha=0.75
+bins=20
+xlims=(0,5)
+
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+for bc in barcodes_int_order:
+    sci_name = dict_bc_sciname[bc]
+    color = col_dict[sci_name]
+    dists = dict_bc_dists[bc]
+    # hist, bin_edges = np.histogram(dists, bins=bins)
+    hist, bin_edges = np.histogram(dists, bins=bins, density=True)
+    x = ip.get_line_histogram_x_vals(bin_edges) * config_mega['resolution']
+    ax.plot(x, hist, color=color, lw=lw, alpha=alpha, label=sci_name)
+ax.set_xlim(xlims[0],xlims[1])
+# ax.legend()
+
+output_dir = config['output_dir'] + '/nn_histogram'
+if not os.path.exists(output_dir): os.makedirs(output_dir)
+out_bn = output_dir + '/' + sn + '_nn_histogram'
+# ip.save_png_pdf(out_bn)
+
+hist.sum()
+
+
+# %% md
+
+# Random simulation
+
+# %% codecell
+spot_coords = ref_pts_arr
+spot_coords_float = np.array([list(c) for c in spot_props_shift.centroid.values])
+hipr_mask_resize = resize_hipr(
+        mask*1, hipr_res, mega_res, dims=lrg.shape, ul_corner=ul_corner
+        )
+pix_coords = np.argwhere(hipr_mask_resize)
+
+r_pix = int(r_um / mega_res)
+
+# %% codecell
+# Simulate random cells and random spots
+n=1000
+
+cell_coords_tup = hipr_reseg_props.loc[:,'centroid'].values
+cell_coords = np.array([list(c) for c in cell_coords_tup])
+cell_bc = hipr_reseg_props.max_intensity.astype(int).tolist()
+
+dict_bc_dists_sim = defaultdict(list)
+for i in tqdm(range(n)):
+    # Randomize spot locations
+    i_sim = np.random.randint(
+            0, pix_coords.shape[0], size=spot_coords_float.shape[0]
+            )
+    sim_spot_coords = pix_coords[i_sim]
+    # # Randomize cell labels
+    # c_sim = np.random.randint(
+    #         0, hipr_reseg_props.shape[0], size=hipr_reseg_props.shape[0]
+    #         )
+    # bc_sim = np.array([x for _, x in sorted(zip(c_sim, cell_bc))])
+    for bc in barcodes_int_order:
+        # Get cell coords for taxon
+        bool_bc = np.array(cell_bc) == bc
+        # bool_bc = bc_sim == bc
+        tax_centroid = cell_coords[bool_bc,:]
+        # Get nearest neighbor cell distance for each spot
+        nbrs = NearestNeighbors(n_neighbors=1).fit(tax_centroid)
+        dists, _ = nbrs.kneighbors(sim_spot_coords)
+        dict_bc_dists_sim[bc].append(dists)
+
+# %% codecell
+# plot simulation
+dims=(1.5,0.75)
+ft=6
+line_col='k'
+lw=3
+alpha=0.75
+bins=20
+xlims=(0,5)
+ylims=(0,1)
+color_sim = 'k'
+alpha_sim=0.15
+lw_sim=0.5
+bin_width_um=0.5
+
+max_dist = np.max([d for k, d in dict_bc_dists_sim.items()])
+max_dist_um = max_dist * config_mega['resolution']
+bins = np.arange(0, max_dist_um,bin_width_um)
+
+for bc in barcodes_int_order:
+    fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+    # PLot simulation
+    sim_dists = np.array(dict_bc_dists_sim[bc]) * config_mega['resolution']
+    for i in tqdm(range(n)):
+        hist, bin_edges = np.histogram(sim_dists[i,:], bins=bins, density=True)
+        # hist /= sum(hist)
+        x = ip.get_line_histogram_x_vals(bin_edges)
+        ax.plot(x, hist, color=color_sim, lw=lw_sim, alpha=alpha_sim)
+    # PLot observed
+    sci_name = dict_bc_sciname[bc]
+    color = col_dict[sci_name]
+    dists = dict_bc_dists[bc] * config_mega['resolution']
+    # hist, bin_edges = np.histogram(dists, bins=bins)
+    hist, bin_edges = np.histogram(dists, bins=bins, density=True)
+    # hist /= sum(hist)
+    x = ip.get_line_histogram_x_vals(bin_edges)
+    ax.plot(x, hist, color=color, lw=lw, alpha=alpha, label=sci_name)
+    # adjust plot
+    ax.set_ylim(ylims[0],ylims[1])
+    ax.set_xlim(xlims[0],xlims[1])
+    print(sci_name)
+    output_dir = config['output_dir'] + '/nn_histogram'
+    if not os.path.exists(output_dir): os.makedirs(output_dir)
+    out_bn = output_dir + '/' + sn + '_nn_histogram_' + sci_name
+    # ip.save_png_pdf(out_bn)
+    plt.show()
+    plt.close()
+
+
+# %% md
+
+# ==============================================================================
+# ## segmentatino Nearest neighbor spots to cells spatial assoc
+# ==============================================================================
+
+# %% codecell
+# Fraction of spots associated
+r_um = 0.5
+
+meas_vals = []
+sim_vals = []
+for bc in barcodes_int_order:
+    # Get simulated fraction within radius of cell
+    sim_dists = dict_bc_dists_sim[bc]
+    sim_dists_um = np.array(sim_dists) * config_mega['resolution']
+    bool_sim_rad = sim_dists_um < r_um
+    sim_rad_counts = np.sum(bool_sim_rad, axis=1)
+    sim_rad_frac = sim_rad_counts
+    sim_vals.append(sim_rad_frac)
+    # Get measured fraction
+    dists_um = dict_bc_dists[bc] * config_mega['resolution']
+    dists_um.shape
+    bool_rad = dists_um < r_um
+    rad_counts = np.sum(bool_rad)
+    rad_frac = rad_counts
+    meas_vals.append(rad_frac)
+
+sim_vals = np.array(sim_vals)[:,:,0]
+sim_frac = sim_vals / spot_coords.shape[0]
+meas_vals = np.array(meas_vals)
+meas_frac = meas_vals / spot_coords.shape[0]
+
+
+# %% codecell
+# Plot fraction of spots
+dims=[2.3,1.25]
+xlab_rotation=45
+pval_rotation=60
+marker='.'
+marker_size=10
+text_dist=0.1
+ft=7
+ylimadj = 0.1
+true_frac_llim = 0
+line_col = 'k'
+box_line_col = (0.5,0.5,0.5)
+box_col = 'w'
+
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+# Plot simulation
+boxplot = ax.boxplot(
+        sim_frac.T, patch_artist=True, showfliers=False,
+        boxprops=dict(facecolor=box_col, color=box_line_col),
+        capprops=dict(color=box_line_col),
+        whiskerprops=dict(color=box_line_col),
+        medianprops=dict(color=box_line_col),
+      )
+# for m in boxplot['medians']:
+#     m.set_color(line_col)
+# for b in boxplot['boxes']:
+#     b.set_edgecolor(line_col)
+#     b.set_facecolor(box_col)
+col_dict
+# Plot measured value
+ys = []
+xlab = []
+x = 1
+for i, bc_tax in enumerate(barcodes_int_order):
+# for i, bc_tax in zip(ind_order, barcodes_int_order):
+    sci_name = dict_bc_sciname[bc_tax]
+    xlab.append(sci_name)
+    try:
+        color = col_dict[sci_name]
+    except:
+        continue
+    true_frac = meas_frac[i]
+    # true_frac = true_count / n_cells
+    _ = ax.plot(x, true_frac, marker=marker, ms=marker_size, color=color)
+    # Plot p value
+    sim_vals_i = sim_vals[i,:]
+    # sim_vals = sim_arr[:,i,h] / n_cells
+    sim_mean = np.mean(sim_vals)
+    if true_frac > sim_mean:
+        # number of simulations with value greater than observed
+        r_ = sum(sim_vals_i > true_frac)
+    else:
+        # number of simulations with value less than observed
+        r_ = sum(sim_vals_i < true_frac)
+    # P value
+    p_ = r_ / n
+    # Get text location
+    q1,q3 = np.quantile(sim_vals, [0.25,0.75])
+    q4 = q3 + 1.5 * (q3 - q1)
+    # y_m = np.max(sim_vals)
+    # y = y_m if y_m > true_frac else true_frac
+    y = q4 if q4 > true_frac else true_frac
+    y += text_dist
+    ys.append(y)
+    # if true_frac < true_frac_llim:
+    #     t = ''
+    # elif (p_ > 0.05):
+    #     t = ''
+    # elif (p_ > 0.001) and (p_ <= 0.05):
+    #     t = str("p=" + str(p_))
+    # else:
+    #     t = str("p<0.001")
+    # _ = ax.text(x, y, t, fontsize=ft, ha='left',va='bottom', rotation=pval_rotation, rotation_mode='anchor',
+    #         color=line_col)
+    x+=1
+ax.set_xticklabels([], rotation=xlab_rotation, ha='right', va='top', rotation_mode='anchor')
+# ax.set_xticklabels(xlab, rotation=xlab_rotation, ha='right', va='top', rotation_mode='anchor')
+ax.tick_params(axis='x',direction='out')
+# ax.spines['top'].set_color('none')
+ax.spines['right'].set_color('none')
+
+ylims = ax.get_ylim()
+# ax.set_ylim(ylims[0], np.max(ys) + ylimadj)
+# out_dir = config['output_dir'] + '/spatial_assoc'
+# if not os.path.exists(out_dir): os.makedirs(out_dir)
+# out_bn = out_dir + '/' + sn + '_seg_nn_frac_spot_association_0_5um'
+# ip.save_png_pdf(out_bn)
+
+# %% codecell
+# Z-score number of spots associated with taxon
+mu = np.mean(sim_vals, axis=1)
+sig = np.std(sim_vals, axis=1)
+sim_z = (sim_vals - mu[:,None]) / sig[:,None]
+meas_z = (meas_vals - mu) / sig
+
+
+# %% codecell
+# Plot z score
+dims=[2.5,1]
+xlab_rotation=45
+pval_rotation=60
+marker='.'
+marker_size=10
+text_dist=0.1
+ft=7
+ylimadj = 0.1
+true_frac_llim = 0
+line_col = 'k'
+box_line_col = (0.5,0.5,0.5)
+box_col = 'w'
+yticklength=2
+
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+# Plot simulation
+boxplot = ax.boxplot(
+        sim_z.T, patch_artist=True, showfliers=False,
+        boxprops=dict(facecolor=box_col, color=box_line_col),
+        capprops=dict(color=box_line_col),
+        whiskerprops=dict(color=box_line_col),
+        medianprops=dict(color=box_line_col),
+      )
+# for m in boxplot['medians']:
+#     m.set_color(line_col)
+# for b in boxplot['boxes']:
+#     b.set_edgecolor(line_col)
+#     b.set_facecolor(box_col)
+col_dict
+# Plot measured value
+ys = []
+xlab = []
+x = 1
+for i, bc_tax in enumerate(barcodes_int_order):
+# for i, bc_tax in zip(ind_order, barcodes_int_order):
+    sci_name = dict_bc_sciname[bc_tax]
+    xlab.append(sci_name)
+    try:
+        color = col_dict[sci_name]
+    except:
+        continue
+    true_frac = meas_z[i]
+    # true_frac = true_count / n_cells
+    _ = ax.plot(x, true_frac, marker=marker, ms=marker_size, color=color)
+    # Plot p value
+    sim_vals_i = sim_vals[i,:]
+    # sim_vals = sim_arr[:,i,h] / n_cells
+    sim_mean = np.mean(sim_vals)
+    if true_frac > sim_mean:
+        # number of simulations with value greater than observed
+        r_ = sum(sim_vals_i > true_frac)
+    else:
+        # number of simulations with value less than observed
+        r_ = sum(sim_vals_i < true_frac)
+    # P value
+    p_ = r_ / n
+    # Get text location
+    q1,q3 = np.quantile(sim_vals, [0.25,0.75])
+    q4 = q3 + 1.5 * (q3 - q1)
+    # y_m = np.max(sim_vals)
+    # y = y_m if y_m > true_frac else true_frac
+    y = q4 if q4 > true_frac else true_frac
+    y += text_dist
+    ys.append(y)
+    # if true_frac < true_frac_llim:
+    #     t = ''
+    # elif (p_ > 0.05):
+    #     t = ''
+    # elif (p_ > 0.001) and (p_ <= 0.05):
+    #     t = str("p=" + str(p_))
+    # else:
+    #     t = str("p<0.001")
+    # _ = ax.text(x, y, t, fontsize=ft, ha='left',va='bottom', rotation=pval_rotation, rotation_mode='anchor',
+    #         color=line_col)
+    x+=1
+# ax.set_xticklabels([], rotation=xlab_rotation, ha='right', va='top', rotation_mode='anchor')
+# ax.set_xticklabels(xlab, rotation=xlab_rotation, ha='right', va='top', rotation_mode='anchor')
+# ax.tick_params(axis='x',direction='out')
+ax.set_xticks([])
+ax.tick_params(axis='y', length=yticklength)
+ax.set_yticks(ticks=[-10,0,10,20], labels=[])
+ax.spines['top'].set_color('none')
+ax.spines['bottom'].set_color('none')
+ax.spines['right'].set_color('none')
+
+# ylims = ax.get_ylim()
+# ax.set_ylim(ylims[0], np.max(ys) + ylimadj)
+out_dir = config['output_dir'] + '/spatial_assoc'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+out_bn = out_dir + '/' + sn + '_seg_nn_zscore_association_0_5um'
+# ip.save_png_pdf(out_bn)
+
+
+# %% md
+
+# ==============================================================================
+# ## Bar plot fraction of spots and cells assoc
+# ==============================================================================
+
+# %% codecell
+# Frac spots assoc with taxon
+# dims=[2.1,0.7]
+ft=6
+line_col = 'k'
+width=0.4
+dims=[2.5,0.6]
+yticklength=2
+
+sci_name_order = [dict_bc_sciname[bc] for bc in barcodes_int_order]
+color_order = [col_dict[sc] for sc in sci_name_order]
+
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+ax.bar(
+        np.arange(meas_frac.shape[0]),
+        meas_frac,
+        width=width,
+        color=color_order,
+        edgecolor=line_col
+        )
+
+ax.spines['top'].set_color('none')
+ax.spines['right'].set_color('none')
+ax.set_xticks([])
+ax.set_yticks(ticks=[0,0.2,0.4], labels=[])
+ax.tick_params(axis='y', length=yticklength)
+
+out_dir = config['output_dir'] + '/spatial_assoc'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+out_bn = out_dir + '/' + sn + '_bar_seg_nn_frac_spot_association_0_5um'
+# ip.save_png_pdf(out_bn)
+
+
+# %% codecell
+tax_counts = np.array([
+        hipr_reseg_props[hipr_reseg_props.max_intensity == bc].shape[0]
+        for bc in barcodes_int_order
+        ])
+
+meas_frac_cell = meas_vals / tax_counts
+
+# %% codecell
+# Frac spots assoc with taxon
+dims=[2.5,0.6]
+yticklength=2
+ft=6
+line_col = 'k'
+width=0.4
+
+
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+ax.bar(
+        np.arange(meas_frac_cell.shape[0]),
+        meas_frac_cell,
+        width=width,
+        color=color_order,
+        edgecolor=line_col
+        )
+ax.set_xticks([])
+ax.set_yticks(ticks=[0,0.3,0.6], labels=[])
+ax.spines['top'].set_color('none')
+ax.spines['right'].set_color('none')
+ax.tick_params(axis='y', length=yticklength)
+
+out_dir = config['output_dir'] + '/spatial_assoc'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+out_bn = out_dir + '/' + sn + '_bar_seg_nn_frac_cell_association_0_5um'
+# ip.save_png_pdf(out_bn)
+
 
 # %% md
 
@@ -2774,8 +3245,8 @@ ax.scatter(ref_pts_arr[:,1], ref_pts_arr[:,0],
 # %% codecell
 # show raw spot on top of classif zoom
 ul = 0.25
-ll = 0.125
-c=[2000,2500]
+ll = 0.15
+c=[1500,2500]
 d=[750,750]
 im_inches = 20
 # zoom_coords=[c[0], c[0]+d[0], c[1], c[1]+d[1]]
@@ -2796,10 +3267,13 @@ spot_raw_overlay[:,:,2] = spot_raw
 spot_raw_overlay[:,:,3] = spot_raw
 sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
 ax.imshow(sro_zoom)
-out_dir = config['output_dir'] + '/pixel_classif_test'
-if not os.path.exists(out_dir): os.makedirs(out_dir)
-out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay_veilonella_zoom'
-ip.save_png_pdf(out_bn)
+# out_dir = config['output_dir'] + '/pixel_classif_test'
+# if not os.path.exists(out_dir): os.makedirs(out_dir)
+# out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay_veilonella_zoom'
+# ip.save_png_pdf(out_bn)
+
+
+
 
 # %% codecell
 # save raw spot on top of classif
@@ -2813,3 +3287,781 @@ ax.imshow(spot_raw_overlay)
 # if not os.path.exists(out_dir): os.makedirs(out_dir)
 # out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay'
 # ip.save_png_pdf(out_bn)
+
+
+
+# %% md
+
+# ==============================================================================
+# ## Multicolor visualization of spot coloc
+# ==============================================================================
+
+# %% codecell
+# %% codecell
+# adjust intensities
+plot_intensities = hipr_max_resize.copy()
+plot_intensities /= np.max(plot_intensities)
+
+
+# # %% codecell
+# # Get resized classifs list for pixel inds
+# barcodes_int = [int(bc) for bc in barcodes]
+# dict_sn_bc = dict(zip(sci_names, barcodes_int))
+# im_bc = np.zeros(max_sub.shape)
+# classifs_bc = [dict_sn_bc[sn] for sn in classifs]
+# pix_ind = np.argwhere(mask)
+# for bc, i in zip(classifs_bc, pix_ind):
+#     x, y = i
+#     # col = col_dict[lab]
+#     # col = np.array(col_dict[lab]) * sum_sub_norm[x,y]
+#     im_bc[x,y] = bc
+# hipr_bc_resize = resize_hipr(
+#         im_bc, hipr_res, mega_res, dims=lrg.shape, ul_corner=ul_corner
+#         )
+
+col_dict['Veillonella']
+
+# %% codecell
+# Get veillonella rgb
+ulv = 0.25
+llv = 0
+plot_intensities_veil = (np.clip(plot_intensities, llv, ulv) - llv) / (ulv - llv)
+mask_veil = (hipr_bc_resize == 100)
+zeros = np.zeros(hipr_bc_resize.shape)
+ones = np.ones(hipr_bc_resize.shape)
+plot_intensities_veil_mask = plot_intensities_veil * mask_veil
+rgb_veil = np.dstack([
+        plot_intensities_veil_mask * 1,
+        plot_intensities_veil_mask * 0.7,
+        plot_intensities_veil_mask * 0.5,
+        plot_intensities_veil_mask
+        ])
+ip.plot_image(np.clip(rgb_veil[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], 0, 1))
+
+# %% codecell
+# Get spot RGB
+spot_raw_coloc = spot_raw * mask_veil
+rgb_spot_coloc = np.dstack([
+        spot_raw_coloc * 1,
+        spot_raw_coloc * 0,
+        spot_raw_coloc * 1,
+        spot_raw_coloc
+        ])
+
+ip.plot_image(np.clip(rgb_spot_coloc[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], 0, 1))
+
+# %% codecell
+# Get spot RGB
+spot_raw_noncoloc = spot_raw * ~mask_veil
+rgb_spot_noncoloc = np.dstack([
+        spot_raw_noncoloc * 1,
+        spot_raw_noncoloc * 1,
+        spot_raw_noncoloc * 0,
+        spot_raw_noncoloc
+        ])
+
+ip.plot_image(np.clip(rgb_spot_noncoloc[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], 0, 1))
+
+# # %% codecell
+# # Overlay
+# rgb_spot_veil = np.clip(rgb_spot + rgb_veil, 0,1)
+# ip.plot_image(rgb_spot_veil, im_inches=20)
+
+
+# %% codecell
+im_inches=20
+ulg=0.5
+llg=0.01
+
+plot_intensities_gray = (np.clip(plot_intensities, llg, ulg) - llg) / (ulg - llg)
+fig, ax, cbar = ip.plot_image(plot_intensities_gray, cmap='gray', im_inches=im_inches, clims=(0,3))
+ax.imshow(rgb_veil)
+ax.imshow(rgb_spot_coloc)
+ax.imshow(rgb_spot_noncoloc)
+
+
+# %% codecell
+im_inches=5
+pig_zoom = plot_intensities_gray[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+zeros_zoom = zeros[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+rgb_veil_zoom = rgb_veil[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+rgb_spot_coloc_zoom = rgb_spot_coloc[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+rgb_spot_noncoloc_zoom = rgb_spot_noncoloc[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+
+fig, ax, cbar = ip.plot_image(pig_zoom, cmap='gray', im_inches=im_inches, clims=(0,2))
+# fig, ax, cbar = ip.plot_image(zeros_zoom, cmap='gray',im_inches=im_inches, clims=(0,2))
+ax.imshow(rgb_veil_zoom)
+ax.imshow(rgb_spot_coloc_zoom)
+ax.imshow(rgb_spot_noncoloc_zoom)
+out_dir = config['output_dir'] + '/pixel_classif_test'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay_veilonella_zoom'
+plt.figure(fig)
+# ip.save_png_pdf(out_bn, bbox_inches=False)
+
+
+
+
+
+# %% md
+
+# ==============================================================================
+# ## Project plasmid density onto plaque
+# ==============================================================================
+
+# %% codecell
+# Get cell
+
+cell = hipr_max_resize
+cell_pix_values = np.sort(np.ravel(cell))
+
+# %% codecell
+# PLot intensities
+thresh_cell=0.05
+dims = (5,5)
+s=1
+
+vals = cell_pix_values[::200]
+fig, ax = ip.general_plot(dims=dims)
+ax.scatter(np.arange(vals.shape[0]), vals, s=s)
+ax.plot([0,vals.shape[0]], [thresh_cell]*2, color='k')
+
+# %% codecell
+im_inches=5
+clims=[(0,0.15),()]
+cell_mask = cell > thresh_cell
+pix_inds = np.where(cell_mask > 0)
+pix_coords = np.array(pix_inds).T
+ip.subplot_square_images([cell, cell_mask], (1,2), clims=clims, im_inches=im_inches)
+
+# %% codecell
+# Correct for edge effects
+r_um = 5
+r_pix = int(r_um / config_mega['resolution'])
+
+#
+#
+#
+area_circle = np.pi * r_um**2
+# # Get circle
+# def get_circle_mask(dimx, dimy, center, radius):
+#     Y, X = np.ogrid[:dimx, :dimy]
+#     distance_from_center = np.sqrt((X - center[0])**2 + (Y-center[1])**2)
+#     return (distance_from_center <= radius)
+# d = r_pix*2 + 1
+# circle_mask = get_circle_mask(d, d, (r_pix, r_pix), r_pix)
+# area_circle_pix = np.sum(circle_mask)
+# ip.plot_image(circle_mask)
+#
+
+# # %% codecell
+# # Get edge of mask
+# cell_mask_bound = ip.find_boundaries(cell_mask, mode='inner')
+# # Convolve with circle
+# cell_mask_edge = fftconvolve(cell_mask_bound, circle_mask)
+# # multiply by mask
+# cell_mask_edge *= np.pad(cell_mask, np.int(r_pix), mode='edge')
+# cell_mask_edge =
+#
+# # plot
+# ip.plot_image(cell_mask_edge > 0)
+
+
+# # %% codecell
+# # For each pixel coordinate
+# thresh_area_frac = 0.9
+#
+# thresh_circle_area = area_circle_pix * thresh_area_frac
+# cell_mask_pad = np.pad(cell_mask, np.int(r_pix), mode='edge')
+# area_list = []
+# um_sq_per_pix = config['resolution']**2
+# for i,j in tqdm(pix_coords):
+#     # Get bbox
+#     i += r_pix
+#     j += r_pix
+#     bbox = cell_mask_pad[i-r_pix: i+r_pix+1, j-r_pix: j+r_pix+1]
+#     if np.sum(bbox) < thresh_circle_area:
+#         # multiply bbox by circle
+#         reduced_mask = circle_mask * bbox
+#         area = np.sum(reduced_mask) * um_sq_per_pix
+#     else:
+#         area = area_circle
+#     # add to area list
+#     area_list.append(area)
+
+# # %% codecell
+# # plot edge correction
+# cell_edge_map = np.zeros(cell.shape)
+# cell_edge_map[pix_inds] = area_list
+# fig, ax, cbar = ip.plot_image(cell_edge_map)
+# background = [np.zeros(cell.shape)]*3 + [~cell_mask*1]
+# background = np.dstack(background)
+# ax.imshow(background)
+
+# %% codecell
+# Calculate spot densities at each cell
+
+# Generate knn object with radius
+nbrs = NearestNeighbors(radius=r_pix).fit(spot_coords)
+# Get radius knn for each pixel
+cell_centroids = hipr_reseg_props.loc[:, 'centroid'].values
+cell_coords = [list(c) for c in cell_centroids]
+dists, inds = nbrs.radius_neighbors(cell_coords)
+# Apply density value to cell pixels
+cell_counts = [i.shape[0] for i in inds]
+cell_spot_density = np.array(cell_counts) / area_circle
+
+
+# %% codecell
+# Plot
+im_inches=10
+dict_label_bbox = dict(hipr_reseg_props[['label','bbox']].values)
+dict_label_density = dict(zip(hipr_reseg_props.label.values, cell_spot_density))
+cell_seg_spot_density = fsi.recolor_image(
+        im=hipr_reseg,
+        dict_label_bbox=dict_label_bbox,
+        dict_label_alt=dict_label_density
+        )
+cell_seg_spot_density.shape
+fig, ax, cbar = ip.plot_image(
+        cell_seg_spot_density,
+        cmap='cividis',
+        scalebar_resolution=config_mega['resolution'],
+        im_inches=im_inches
+        )
+background = [np.zeros(cell.shape)]*3 + [~cell_mask*1]
+background = np.dstack(background)
+ax.imshow(background)
+
+plt.figure(fig)
+out_dir = config['output_dir'] + '/density_maps'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+output_bn = out_dir + '/' + sn + '_spot_density_map'
+# ip.save_png_pdf(output_bn)
+plt.figure(cbar)
+out_dir = config['output_dir'] + '/density_maps'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+output_bn = out_dir + '/' + sn + '_spot_density_map_chan_cbar'
+# ip.save_png_pdf(output_bn)
+plt.show()
+plt.close()
+
+# %% codecell
+# Threshold high density areas
+thresh_density = 0.1
+bool_density = cell_seg_spot_density > thresh_density
+cell_seg_spot_density_thresh = cell_seg_spot_density*bool_density
+fig, ax, cbar = ip.plot_image(
+        bool_density,
+        cmap='gray',
+        scalebar_resolution=config_mega['resolution']
+        )
+plt.figure(fig)
+out_dir = config['output_dir'] + '/density_maps'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+output_bn = out_dir + '/' + sn + '_spot_high_density_group'
+# ip.save_png_pdf(output_bn)
+
+
+# %% codecell
+# Get composition in high vs low densiy areas
+bool_density_h = np.array(cell_spot_density) > thresh_density
+bcs_high_density = hipr_reseg_props.loc[
+        bool_density_h,
+        'max_intensity'
+        ].value_counts().sort_index()
+bool_density_l = np.array(cell_spot_density) <= thresh_density
+bcs_low_density = hipr_reseg_props.loc[
+        bool_density_l,
+        'max_intensity'
+        ].value_counts().sort_index()
+print(bcs_high_density)
+print(bcs_low_density)
+
+# %% codecell
+# plot composition differences
+dims=[3,3]
+ft=12
+line_col = 'k'
+
+barcodes_order = np.unique([bcs_low_density.index, bcs_high_density.index]).astype(int)
+fig, ax = ip.general_plot(dims=dims, ft=ft, col=line_col)
+# Noramalize taxon counts within regions
+bcs_high_density_norm = bcs_high_density / bcs_high_density.sum()
+bcs_low_density_norm = bcs_low_density / bcs_low_density.sum()
+# Create an ordered matrix with abundance values
+dict_bcs_hdn = bcs_high_density_norm.to_dict()
+dict_bcs_ldn = bcs_low_density_norm.to_dict()
+bcs_densitygroup = np.empty((len(barcodes_order), 2))
+for i, bc in enumerate(barcodes_order):
+    try:
+        hdn = dict_bcs_hdn[bc]
+    except:
+        hdn = 0
+    try:
+        ldn = dict_bcs_ldn[bc]
+    except:
+        ldn = 0
+    bcs_densitygroup[i,:] = [hdn, ldn]
+
+# Plot stacked barplot
+for i, bc in enumerate(barcodes_order):
+    bottom = np.zeros(2)
+    # if i > 0:
+    j = i - 1
+    while j >= 0:
+        bottom += bcs_densitygroup[j,:]
+        j -= 1
+    if bc == 0:
+        color=(0.5,0.5,0.5)
+        sci_name='No Barcode'
+    else:
+        sci_name = dict_bc_sciname[bc]
+        color = col_dict[sci_name]
+    ax.bar([0,1], bcs_densitygroup[i,:], bottom=bottom, color=color, label=sci_name)
+ax.set_xticks(ticks=[0,1], labels=['high','low'])
+out_dir = config['output_dir'] + '/density_maps'
+if not os.path.exists(out_dir): os.makedirs(out_dir)
+output_bn = out_dir + '/' + sn + '_spot_density_group_composition'
+# ip.save_png_pdf(output_bn)
+
+
+
+
+# %% md
+
+# ==============================================================================
+# ## Look at spectra near spots 
+# ==============================================================================
+
+# %% codecell
+# get reference spectra
+ref_dir = config['hipr_dir'] + '/' + config_hipr['hipr_ref_dir']
+fmt = config_hipr['ref_files_fmt']
+probe_design_dir = config['hipr_dir'] + '/' + config_hipr['__default__']['PROBE_DESIGN_DIR']
+probe_design_fn = probe_design_dir + '/' + config_hipr['probe_design_filename']
+probe_design = pd.read_csv(probe_design_fn)
+barcodes = probe_design['code'].unique()
+barcodes_str = [str(bc).zfill(7) for bc in barcodes]
+barcodes_10bit = [bc[0] + '0' + bc[1:4] + '00' + bc[4:] for bc in barcodes_str]
+barcodes_b10 = [int(str(bc),2) for bc in barcodes_10bit]
+sci_names = [probe_design.loc[probe_design['code'] == bc,'sci_name'].unique()[0]
+        for bc in barcodes]
+st = config_hipr['ref_chan_start'] + config_hipr['chan_start']
+en = config_hipr['ref_chan_start'] + config_hipr['chan_end']
+ref_avgint_cols = [i for i in range(st,en)]
+
+ref_spec = []
+for bc in barcodes_b10:
+    fn = ref_dir + '/'+ fmt.format(bc)
+    ref = pd.read_csv(fn, header=None)
+    ref = ref[ref_avgint_cols].values
+    ref_spec.append(ref)
+    # ref_norm = ref / np.max(ref, axis=1)[:,None]
+    # weights.append(np.mean(ref_norm, axis=0))
+
+# # max normalized reference
+ref_norm = [r / np.max(r, axis=1)[:,None] for r in ref_spec]
+weights_max_norm = [np.mean(r, axis=0) for r in ref_norm]
+
+for w, n in zip(weights_max_norm, sci_names):
+    fig, ax = ip.general_plot(dims=(10,5))
+    fsi.plot_cell_spectra(ax, np.array(w)[None,:], {'lw':1,'alpha':1,'color':'r'})
+    ax.set_title(n)
+
+# %% codecell
+# get raw MGE image 
+im_inches = 10
+
+ul = 0.4
+ll = 0.1
+
+
+spot_raw = raw_shift[0][:,:,1].copy()
+spot_raw -= np.min(spot_raw)
+spot_raw /= np.max(spot_raw)
+spot_raw[spot_raw > ul] = ul
+spot_raw[spot_raw < ll] = 0
+spot_raw /= ul
+spot_raw_overlay = np.zeros(spot_raw.shape + (4,))
+spot_raw_overlay[:,:,0] = spot_raw
+spot_raw_overlay[:,:,2] = spot_raw
+spot_raw_overlay[:,:,3] = spot_raw
+
+# %% codecell
+# Get full region 
+c = [700,500]
+d = [2800,3200]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1550,1550]
+d = [25,30]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+# ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1780,1640]
+d = [50,50]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1420,2850]
+d = [50,50]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+# ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1600,2800]
+d = [50,50]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+# ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1700,1975]
+d = [125,125]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1500,1600]
+d = [30,50]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1500,2020]
+d = [100,100]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [2833,2050]
+d = [15,25]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [3025,2525]
+d = [30,30]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [2775,2777]
+d = [20,20]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+# ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [2745,2780]
+d = [20,20]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+# ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1850,2800]
+d = [50,125]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+# %% codecell
+##############################
+# Get zoom region 
+c = [1940,2860]
+d = [50,50]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:], scalebar_resolution=mega_res, im_inches=im_inches
+        )
+
+# sro_zoom = spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+# %% codecell
+# Get spectra 
+
+stack_resize_zoom = hipr_stacksmooth_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+spectra_zoom = stack_resize_zoom[np.ones(stack_resize_zoom.shape[:2], dtype=bool)]
+
+fig, ax = ip.general_plot(dims=(10,5))
+fsi.plot_cell_spectra(ax, spectra_zoom, {'lw':0.1,'alpha':0.1,'color':'r'})
+
+
+# %% codecell
+##############################
+# Plot the 561 channel vs the 633 channel
+
+
+c = [500,500]
+d = [3000,3200]
+
+fig, ax, cbar = ip.plot_image(
+        hipr_rgb_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],2], 
+        scalebar_resolution=mega_res, 
+        im_inches=im_inches,
+        cmap='gray'
+        )
+
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+
+# %% codecell
+##############################
+# Plot the ROX signal vs the 633 channel
+
+
+c = [500,500]
+d = [3000,3200]
+
+fig, ax, cbar = ip.plot_image(
+        np.sum(hipr_stack_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],48:], axis=2), 
+        scalebar_resolution=mega_res, 
+        im_inches=im_inches,
+        cmap='gray',
+        clims=(0,2.5)
+        )
+
+ax.imshow(spot_raw_overlay[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:])
+
+
+
+
+# %% codecell
+# im_inches=20
+# ceil=1
+# size_min=0.1
+# marker_size=100
+# marker='.'
+# spot_col=(1,0,1)
+# edge_col='none'
+# linewidths=1.5
+
+# spot_props_shift = sss_props
+# fig, ax, cbar = ip.plot_image(
+#         hipr_rgb_resize, scalebar_resolution=mega_res, im_inches=im_inches
+#         )
+# ref_pts = [c for c in spot_props_shift['centroid'].values]
+# ref_pts = np.rint(ref_pts).astype(np.int64)
+# ref_pts_arr = np.array(ref_pts)
+# # # Plot size as spot intensity
+# # spot_int = spot_props_shift.max_intensity.values.copy()
+# # spot_int -= np.min(spot_int)
+# # spot_int /= np.max(spot_int)
+# # spot_int[spot_int > ceil] = ceil
+# # spot_int /= ceil
+# # spot_int[spot_int < size_min] = size_min
+# # marker_size_arr = marker_size * spot_int
+# marker_size_arr=marker_size
+# ax.scatter(ref_pts_arr[:,1], ref_pts_arr[:,0],
+#             marker=marker, s=marker_size_arr, color=spot_col,
+#             linewidths=linewidths, edgecolors=edge_col
+#             )
+# ax.set_xlim(c[1], c[1]+d[1])
+# ax.set_ylim(c[0], c[0]+d[0])

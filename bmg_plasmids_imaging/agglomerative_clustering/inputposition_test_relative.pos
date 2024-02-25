@@ -1,0 +1,15 @@
+Carl Zeiss LSM 510 - Position list file - Version = 1.000
+BEGIN PositionList Version = 10001
+	BEGIN  10001
+		RelativePositions = 1
+		ReferenceX = -0.000 µm
+		ReferenceY = -0.000 µm
+		ReferenceZ = -364.336 µm
+	END
+	NumberPositions = 1
+	BEGIN Position1 Version = 10001
+		X = -6571.535 µm
+		Y = 1541.759 µm
+		Z = 0.000 µm
+	END
+END

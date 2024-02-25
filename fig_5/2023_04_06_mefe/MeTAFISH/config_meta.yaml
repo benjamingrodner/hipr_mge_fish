@@ -1,5 +1,5 @@
 workdir: /workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_04_06_mefe/MeGAFISH
-input_dir: ../../../../data/fig_5/2023_04_06_mefe # Relative path to wherever your input images are from the
+input_dir: ../../../../data/Combined_taxonomic_mapping_and_MGE_mapping/plasmid_mefE_host_association_images # Relative path to wherever your input images are from the
                   # projecet workdir
 output_dir: ../../../../outputs/fig_5/2023_04_06_mefe/MeGAFISH # relative path of the directory you want to write to,
                         # does not need to exist yet

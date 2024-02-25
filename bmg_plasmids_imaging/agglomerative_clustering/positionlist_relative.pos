@@ -1,0 +1,430 @@
+Carl Zeiss LSM 510 - Position list file - Version = 1.000
+BEGIN PositionList Version = 10001
+	BEGIN  10001
+		RelativePositions = 1
+		ReferenceX = -0.000 µm
+		ReferenceY = -0.000 µm
+		ReferenceZ = -0.000 µm
+	END
+	NumberPositions = 84
+	BEGIN Position1 Version = 10001
+		X = -6650.935 µm
+		Y = 1911.653 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position2 Version = 10001
+		X = -6438.387 µm
+		Y = 1911.653 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position3 Version = 10001
+		X = -6438.387 µm
+		Y = 2124.201 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position4 Version = 10001
+		X = -6650.935 µm
+		Y = 2124.201 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position5 Version = 10001
+		X = -5820.965 µm
+		Y = 1859.517 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position6 Version = 10001
+		X = -5608.417 µm
+		Y = 1859.517 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position7 Version = 10001
+		X = -5608.417 µm
+		Y = 2072.065 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position8 Version = 10001
+		X = -5820.965 µm
+		Y = 2072.065 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position9 Version = 10001
+		X = -5409.279 µm
+		Y = 1542.155 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position10 Version = 10001
+		X = -5196.731 µm
+		Y = 1542.155 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position11 Version = 10001
+		X = -5196.731 µm
+		Y = 1754.703 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position12 Version = 10001
+		X = -5409.279 µm
+		Y = 1754.703 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position13 Version = 10001
+		X = -4965.072 µm
+		Y = 686.284 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position14 Version = 10001
+		X = -4752.524 µm
+		Y = 686.284 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position15 Version = 10001
+		X = -4752.524 µm
+		Y = 898.832 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position16 Version = 10001
+		X = -4965.072 µm
+		Y = 898.832 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position17 Version = 10001
+		X = -4967.031 µm
+		Y = 209.808 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position18 Version = 10001
+		X = -4754.483 µm
+		Y = 209.808 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position19 Version = 10001
+		X = -4754.483 µm
+		Y = 422.356 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position20 Version = 10001
+		X = -4967.031 µm
+		Y = 422.356 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position21 Version = 10001
+		X = -5098.601 µm
+		Y = 46.017 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position22 Version = 10001
+		X = -4886.053 µm
+		Y = 46.017 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position23 Version = 10001
+		X = -4886.053 µm
+		Y = 258.565 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position24 Version = 10001
+		X = -5098.601 µm
+		Y = 258.565 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position25 Version = 10001
+		X = -5204.837 µm
+		Y = -131.707 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position26 Version = 10001
+		X = -4992.289 µm
+		Y = -131.707 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position27 Version = 10001
+		X = -4992.289 µm
+		Y = 80.841 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position28 Version = 10001
+		X = -5204.837 µm
+		Y = 80.841 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position29 Version = 10001
+		X = -5371.821 µm
+		Y = -382.488 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position30 Version = 10001
+		X = -5159.273 µm
+		Y = -382.488 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position31 Version = 10001
+		X = -5159.273 µm
+		Y = -169.940 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position32 Version = 10001
+		X = -5371.821 µm
+		Y = -169.940 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position33 Version = 10001
+		X = -5584.976 µm
+		Y = -561.945 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position34 Version = 10001
+		X = -5372.428 µm
+		Y = -561.945 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position35 Version = 10001
+		X = -5372.428 µm
+		Y = -349.397 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position36 Version = 10001
+		X = -5584.976 µm
+		Y = -349.397 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position37 Version = 10001
+		X = -5839.789 µm
+		Y = -561.945 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position38 Version = 10001
+		X = -5627.241 µm
+		Y = -561.945 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position39 Version = 10001
+		X = -5627.241 µm
+		Y = -349.397 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position40 Version = 10001
+		X = -5839.789 µm
+		Y = -349.397 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position41 Version = 10001
+		X = -6188.231 µm
+		Y = -561.940 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position42 Version = 10001
+		X = -5975.683 µm
+		Y = -561.940 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position43 Version = 10001
+		X = -5975.683 µm
+		Y = -349.392 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position44 Version = 10001
+		X = -6188.231 µm
+		Y = -349.392 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position45 Version = 10001
+		X = -6465.440 µm
+		Y = -413.230 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position46 Version = 10001
+		X = -6252.892 µm
+		Y = -413.230 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position47 Version = 10001
+		X = -6252.892 µm
+		Y = -200.682 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position48 Version = 10001
+		X = -6465.440 µm
+		Y = -200.682 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position49 Version = 10001
+		X = -6808.448 µm
+		Y = -69.891 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position50 Version = 10001
+		X = -6595.900 µm
+		Y = -69.891 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position51 Version = 10001
+		X = -6595.900 µm
+		Y = 142.657 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position52 Version = 10001
+		X = -6808.448 µm
+		Y = 142.657 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position53 Version = 10001
+		X = -7037.703 µm
+		Y = 115.581 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position54 Version = 10001
+		X = -6825.155 µm
+		Y = 115.581 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position55 Version = 10001
+		X = -6825.155 µm
+		Y = 328.129 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position56 Version = 10001
+		X = -7037.703 µm
+		Y = 328.129 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position57 Version = 10001
+		X = -7216.252 µm
+		Y = 232.242 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position58 Version = 10001
+		X = -7003.704 µm
+		Y = 232.242 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position59 Version = 10001
+		X = -7003.704 µm
+		Y = 444.790 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position60 Version = 10001
+		X = -7216.252 µm
+		Y = 444.790 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position61 Version = 10001
+		X = -7521.190 µm
+		Y = 349.743 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position62 Version = 10001
+		X = -7308.642 µm
+		Y = 349.743 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position63 Version = 10001
+		X = -7308.642 µm
+		Y = 562.291 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position64 Version = 10001
+		X = -7521.190 µm
+		Y = 562.291 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position65 Version = 10001
+		X = -7797.244 µm
+		Y = 753.076 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position66 Version = 10001
+		X = -7584.696 µm
+		Y = 753.076 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position67 Version = 10001
+		X = -7584.696 µm
+		Y = 965.624 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position68 Version = 10001
+		X = -7797.244 µm
+		Y = 965.624 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position69 Version = 10001
+		X = -7777.173 µm
+		Y = 1093.901 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position70 Version = 10001
+		X = -7564.625 µm
+		Y = 1093.901 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position71 Version = 10001
+		X = -7564.625 µm
+		Y = 1306.449 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position72 Version = 10001
+		X = -7777.173 µm
+		Y = 1306.449 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position73 Version = 10001
+		X = -7641.583 µm
+		Y = 1406.648 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position74 Version = 10001
+		X = -7429.035 µm
+		Y = 1406.648 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position75 Version = 10001
+		X = -7429.035 µm
+		Y = 1619.196 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position76 Version = 10001
+		X = -7641.583 µm
+		Y = 1619.196 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position77 Version = 10001
+		X = -7340.974 µm
+		Y = 1601.114 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position78 Version = 10001
+		X = -7128.426 µm
+		Y = 1601.114 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position79 Version = 10001
+		X = -7128.426 µm
+		Y = 1813.662 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position80 Version = 10001
+		X = -7340.974 µm
+		Y = 1813.662 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position81 Version = 10001
+		X = -7028.946 µm
+		Y = 1778.891 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position82 Version = 10001
+		X = -6816.398 µm
+		Y = 1778.891 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position83 Version = 10001
+		X = -6816.398 µm
+		Y = 1991.439 µm
+		Z = -364.336 µm
+	END
+	BEGIN Position84 Version = 10001
+		X = -7028.946 µm
+		Y = 1991.439 µm
+		Z = -364.336 µm
+	END
+END

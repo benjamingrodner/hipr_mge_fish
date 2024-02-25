@@ -64,8 +64,8 @@ def main():
             image = bioformats.load_image(fn)
 
             # save separate lasers to numpy
-            lookahead = config['prep']['laser_lookahead']
-            laser = re.search(r'\d{3}(?=' + lookahead + ')',fn).group(0)
+            # lookahead = config['prep']['laser_lookahead']
+            # laser = re.search(r'\d{3}(?=' + lookahead + ')',fn).group(0)
             np.save(out_fn, image)
         else:
             image = np.load(out_fn)

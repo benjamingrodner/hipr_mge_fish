@@ -6,6 +6,16 @@
 
 # Takes as input Spectral images from i880 confocal with hiprfish spectral barcoding
 
+'''
+For Figure 5.
+5 targets 1 fluor each
+Streptococcus, Veillonella, Corynebacterium, Neisseria, Lautropia
+3 lasers for hiprfish
+1 laser for MGE map 633
+mefE is the target gene
+
+'''
+
 # ==============================================================================
 # ## Setup
 # ==============================================================================
@@ -39,7 +49,7 @@ import numba as nb
 
 # %% codecell
 # Absolute path
-project_workdir = '/fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_04_06_mefe/HiPRFISH'
+project_workdir = '/workdir/bmg224/manuscripts/mgefish/code/fig_5/2023_04_06_mefe/HiPRFISH'
 
 os.chdir(project_workdir)
 os.getcwd()  # Make sure you're in the right directory
@@ -87,7 +97,7 @@ print(reg_glob)
 sample_names
 
 # %% codecell
-sn_i = 0
+sn_i = 1
 sn = sample_names[sn_i]
 sn
 
@@ -258,7 +268,7 @@ import javabridge
 import bioformats
 import aicspylibczi as aplc
 # javabridge.start_vm(class_path=bioformats.JARS)
-raws = [bioformats.load_image(fn) for fn in input_fns]
+raws = [bioformats.load_image(fn) for fn in input_fns if sn in fn]
 # raws = [aplc.CziFile(fn) for fn in raw_fns]
 # print([r.get_dims_shape() for r in raws])
 # print([r.is_mosaic() for r in raws])
@@ -269,6 +279,7 @@ raws = [bioformats.load_image(fn) for fn in input_fns]
 
 # %% codecell
 print(raws[0].shape)
+len(raws)
 
 # %% codecell
 # show rgb overlay
@@ -307,7 +318,7 @@ shift_vectors = fsi._get_shift_vectors(raws_max)
 print(shift_vectors)
 # %% codecell
 raws_shift = fsi._shift_images(raws, shift_vectors, max_shift=500)
-print(raws_shift[0].shape)
+print([raws_shift[i].shape for i in range(len(raws_shift))])
 # %% codecell
 raws_shift_max = [np.max(im, axis=2) for im in raws_shift]
 raws_shift_max_norm = [im / np.max(im) for im in raws_shift_max]
@@ -370,6 +381,7 @@ ip.subplot_square_images([max_unsmooth, mask, max_masked], (1,3), im_inches=im_i
 
 # %% codecell
 spec_pix = stack_smooth[mask > 0]
+spec_pix.shape
 spec_pix_norm = spec_pix / np.max(spec_pix, axis=1)[:,None]
 
 # %% codecell
@@ -378,10 +390,10 @@ from sklearn.preprocessing import StandardScaler
 pix_scaler = StandardScaler().fit(spec_pix)
 spec_pix_scaled = pix_scaler.transform(spec_pix)
 
-
+sn
 # %% codecell
 # get reference spectra
-ref_dir = '/fs/cbsuvlaminck2/workdir/bmg224/manuscripts/mgefish/outputs/fig_5/2023_02_16_ecreference/HiPRFISH/seg_props'
+ref_dir = '/workdir/bmg224/manuscripts/mgefish/outputs/fig_5/2023_02_16_ecreference/HiPRFISH/seg_props'
 fmt = '2023_02_16_ecreference_code_{}_fov_01_seg_props.csv'
 barcodes = ['00001','00010','00100','01000','10000']
 sci_names = ['Streptococcus','Neisseria','Veilonella','Lautropia','Corynebacterium']
@@ -440,6 +452,8 @@ weights_pick = weights_sum_norm
 input = spec_pix_scaled
 
 weights_t = np.array(weights_pick).T
+weights_t.shape
+input.shape
 classif_mat = np.matmul(input, weights_t)
 classifs_index = np.argmax(classif_mat, axis=1)
 classifs = np.array([sci_names[i] for i in classifs_index])
@@ -460,7 +474,7 @@ for l in labs_sort[:20]:
 # %% codecell
 # Re project the pixels onto the image
 # Reduce the white level
-ul = 0.65
+ul = 0.25
 plot_intensities = max_unsmooth.copy()
 plot_intensities /= np.max(plot_intensities)
 plot_intensities[plot_intensities > ul] = ul
@@ -501,7 +515,7 @@ fig, ax = ip.taxon_legend(
         taxon_colors=col_ordered
         )
 out_bn = output_dir + '/' + sn + '_taxon_legend'
-ip.save_png_pdf(out_bn)
+# ip.save_png_pdf(out_bn)
 
 # %% codecell
 # Save classif
@@ -1123,6 +1137,82 @@ out_dir = config['output_dir'] + '/pixel_classif_test'
 if not os.path.exists(out_dir): os.makedirs(out_dir)
 out_bn = out_dir + '/' + sn + '_spot_association_frac_0_5um'
 ip.save_png_pdf(out_bn)
+
+
+
+# %% md
+
+# ==============================================================================
+# ## assign identities to segmentation
+# ==============================================================================
+
+'''
+5/5/23 Ran segmentation hiprfish script on the image
+2023_04_06_mefe_pool_sub_slide_1_fov_02
+'''
+
+
+# %% codecell
+# Show zoom of classif overlayed with seg
+# Load seg
+hipr_seg_fmt = config['hipr_dir'] + '/' + config_hipr['output_dir'] + '/' + config_hipr['seg_fmt']
+hipr_seg = np.load(hipr_seg_fmt.format(sample_name=sn))
+# %% codecell
+# resize
+dims = lrg.shape
+ul_corner = shp_dff
+spot_coords = ref_pts_arr
+hipr_seg_resize = resize_hipr(
+        hipr_seg, hipr_res, mega_res, dims=dims, ul_corner=ul_corner
+        )
+
+# %% codecell
+# overlay
+c=[2000,2500]
+d=[750,750]
+im_inches = 20
+# zoom_coords=[c[0], c[0]+d[0], c[1], c[1]+d[1]]
+
+hcr_zoom = hipr_classif_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+fig, ax, cbar = ip.plot_image(
+        hcr_zoom, scalebar_resolution=mega_res, im_inches=im_inches
+        )
+hsr_zoom = hipr_seg_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+ip.plot_seg_outline(ax, hsr_zoom, col=(1,1,1))
+# out_dir = config['output_dir'] + '/pixel_classif_test'
+# if not os.path.exists(out_dir): os.makedirs(out_dir)
+# out_bn = out_dir + '/' + sn + '_classif_spotraw_overlay_zoom'
+# ip.save_png_pdf(out_bn)
+
+# %% codecell
+# Sub segment the image based on classifier'
+hipr_seg_resize_props = sf.measure_regionprops(hipr_seg_resize)
+bboxes = hipr_seg_resize_props.bbox
+labels = hipr_seg_resize_props.label
+
+hipr_reseg = sf.re_segment_with_classif(
+        hipr_seg_resize, hipr_bc_resize, bboxes, labels
+        )
+
+# %% codecell
+c=[2000,2500]
+d=[750,750]
+im_inches = 20
+# zoom_coords=[c[0], c[0]+d[0], c[1], c[1]+d[1]]
+
+hcr_zoom = hipr_classif_resize[c[0]: c[0]+d[0], c[1]: c[1]+d[1],:]
+fig, ax, cbar = ip.plot_image(
+        hcr_zoom, scalebar_resolution=mega_res, im_inches=im_inches
+        )
+hsr_zoom = hipr_reseg[c[0]: c[0]+d[0], c[1]: c[1]+d[1]]
+ip.plot_seg_outline(ax, hsr_zoom, col=(1,1,1))
+
+
+# %% codecell
+# Get regionprops for new seg
+hipr_reseg_props = sf.measure_regionprops(hipr_reseg, raw=hipr_bc_resize)
+
+
 
 
 # %% codecell

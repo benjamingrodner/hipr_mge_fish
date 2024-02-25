@@ -104,7 +104,7 @@ def get_cell_average_spectra(seg, raw):
 
 
 def plot_cell_spectra(ax, arr_spec, kwargs):
-    x = np.arange(arr_spec.shape[1]) + 1
+    x = np.arange(arr_spec.shape[1])
     X = np.ones(arr_spec.shape) * x
     ax.plot(X.T, arr_spec.T, **kwargs)
     return(ax)

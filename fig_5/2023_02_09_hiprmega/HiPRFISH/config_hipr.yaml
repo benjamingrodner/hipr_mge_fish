@@ -15,16 +15,16 @@ functions_path: functions  # Path to function scripts relative to the pipeline p
 ### This terminology is to adapt to the old hiprfish scripts
 __default__:
   SCRIPTS_PATH: ../../../scripts/HiPRFISH
-  DATA_DIR: ../../../../data/fig_5/2023_02_09_hiprmega/HiPRFISH  # Relative path to wherever your input images are from the
-  PROBE_DESIGN_DIR: ../../../../data/fig_5/HiPRFISH_probe_design_output
+  DATA_DIR: ../../../../data/unused/fig_5/2023_02_09_hiprmega/HiPRFISH  # Relative path to wherever your input images are from the
+  PROBE_DESIGN_DIR: ../../../../data/unused/fig_5/HiPRFISH_probe_design_output
 
 ### Added paths that were previously hardcoded
 output_dir: ../../../../outputs/fig_5/2023_02_09_hiprmega/HiPRFISH # relative path of the directory you want to write to,
 figure_dir: ../../../../outputs/fig_5/2023_02_09_hiprmega/figures
 
-fret_dir: ../../../../data/fig_5/HiPRFISH_fret_files
+fret_dir: ../../../../data/unused/fig_5/HiPRFISH_fret_files
 excitation_files_fmt: R{}_excitation.csv  # in fret dir, Must have columns [Emission, Excitation, Wavelength]
-hipr_ref_dir: ../../../../data/fig_5/HiPRFISH_reference_spectra
+hipr_ref_dir: ../../../../data/unused/fig_5/HiPRFISH_reference_spectra
 ref_files_fmt: 08_18_2018_enc_{}_avgint.csv  # in ref_dir, Must contain table of many cells with single fluor spectra,
                                               # filename in base10 exaple 0000100 -> enc_4.csv
 ## Script files
