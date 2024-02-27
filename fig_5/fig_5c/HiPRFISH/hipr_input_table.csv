@@ -1,2 +1,0 @@
-SAMPLE,IMAGES,SAMPLING_TIME,SAMPLING_DAY_REFERENCE,MOUSE,TREATMENT,CALIBRATION,REFERENCE,CALIBRATION_FILENAME,REFERENCE_FOLDER,SPC,DIMENSION,ZSLICE,PROBEDESIGN,DESIGN_ID,SIZELIMIT,MARKER_X,MARKER_Y
-.,2022_03_19_plaquephagelytic_sample_bmg_probes_termL2_fov_tile2_round_3_mode_spec,0,0,0,0,F,T,0,reference_training,2000,2,-1,../../../../data/fig_5/HiPRFISH_probe_design_output/DSGN0673_primerset_C_barcode_selection_MostSimple_full_length_probes.csv,DSGN0673,200,0,0

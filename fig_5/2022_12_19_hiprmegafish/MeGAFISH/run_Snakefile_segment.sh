@@ -1,1 +1,0 @@
-snakemake -s Snakefile_segment --configfile config_mgefish.yaml -j 3 -p 

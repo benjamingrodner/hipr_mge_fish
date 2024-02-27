@@ -1,1 +1,0 @@
-snakemake -s Snakefile_segment --configfile config_mgefish_ecoli.yaml -j 3 -p 

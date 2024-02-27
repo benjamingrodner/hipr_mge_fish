@@ -1,1 +1,0 @@
-snakemake -s Snakefile_spottocell --configfile config.yaml -j 1 -p -R assign_spots_to_cells_220707

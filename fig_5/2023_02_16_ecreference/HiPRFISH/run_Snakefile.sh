@@ -1,1 +1,0 @@
-snakemake -s Snakefile --configfile config_hipr.yaml -j 1 -p 
